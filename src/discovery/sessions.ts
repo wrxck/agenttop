@@ -1,9 +1,9 @@
-import { readdirSync, readFileSync, statSync, readlinkSync, openSync, readSync, closeSync } from 'node:fs';
+import { readdirSync, statSync, readlinkSync, openSync, readSync, closeSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { execSync } from 'node:child_process';
 
 import { getTaskDirs } from '../config.js';
-import type { Session, RawEvent, ProcessInfo } from './types.js';
+import type { Session, ProcessInfo, TokenUsage } from './types.js';
 
 export const getClaudeProcesses = (): ProcessInfo[] => {
   try {
@@ -52,7 +52,10 @@ const readFirstEvent = (filePath: string): Record<string, unknown> | null => {
   }
 };
 
-const findModel = (filePath: string): string => {
+const findModelAndUsage = (filePath: string): { model: string; usage: TokenUsage } => {
+  const usage: TokenUsage = { inputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0, outputTokens: 0 };
+  let model = '';
+
   try {
     const fd = openSync(filePath, 'r');
     const buf = Buffer.alloc(65536);
@@ -64,8 +67,17 @@ const findModel = (filePath: string): string => {
       if (!line) continue;
       try {
         const evt = JSON.parse(line);
-        if (evt.type === 'assistant' && evt.message?.model) {
-          return String(evt.message.model);
+        if (evt.type === 'assistant') {
+          if (!model && evt.message?.model) {
+            model = String(evt.message.model);
+          }
+          const u = evt.message?.usage;
+          if (u) {
+            usage.inputTokens += u.input_tokens ?? 0;
+            usage.cacheCreationTokens += u.cache_creation_input_tokens ?? 0;
+            usage.cacheReadTokens += u.cache_read_input_tokens ?? 0;
+            usage.outputTokens += u.output_tokens ?? 0;
+          }
         }
       } catch {
         continue;
@@ -74,7 +86,8 @@ const findModel = (filePath: string): string => {
   } catch {
     // ignore
   }
-  return '';
+
+  return { model, usage };
 };
 
 const normalisePath = (p: string): string => {
@@ -125,6 +138,7 @@ export const discoverSessions = (allUsers: boolean): Session[] => {
       let gitBranch = '';
       let startTime = Infinity;
       let lastActivity = 0;
+      const totalUsage: TokenUsage = { inputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0, outputTokens: 0 };
 
       for (const outputFile of outputFiles) {
         const agentId = basename(outputFile, '.output');
@@ -148,9 +162,14 @@ export const discoverSessions = (allUsers: boolean): Session[] => {
           // ignore
         }
 
-        if (!model) {
-          model = findModel(outputFile);
+        const result = findModelAndUsage(outputFile);
+        if (!model && result.model) {
+          model = result.model;
         }
+        totalUsage.inputTokens += result.usage.inputTokens;
+        totalUsage.cacheCreationTokens += result.usage.cacheCreationTokens;
+        totalUsage.cacheReadTokens += result.usage.cacheReadTokens;
+        totalUsage.outputTokens += result.usage.outputTokens;
       }
 
       if (!model) {
@@ -180,6 +199,7 @@ export const discoverSessions = (allUsers: boolean): Session[] => {
         outputFiles,
         startTime: startTime === Infinity ? Date.now() : startTime,
         lastActivity,
+        usage: totalUsage,
       };
 
       sessionMap.set(sessionId || projectName, session);

@@ -1,4 +1,12 @@
-import type { RawEvent, ToolCall, ToolResult, SecurityEvent } from '../discovery/types.js';
+import type { RawEvent, ToolCall, ToolResult, SecurityEvent, TokenUsage } from '../discovery/types.js';
+
+const parseEventTimestamp = (event: RawEvent): number => {
+  if (event.timestamp) {
+    const parsed = new Date(event.timestamp).getTime();
+    if (!isNaN(parsed)) return parsed;
+  }
+  return Date.now();
+};
 
 export const parseLine = (line: string): RawEvent | null => {
   try {
@@ -14,6 +22,7 @@ export const extractToolCalls = (event: RawEvent): ToolCall[] => {
   const content = event.message?.content;
   if (!Array.isArray(content)) return [];
 
+  const ts = parseEventTimestamp(event);
   const calls: ToolCall[] = [];
 
   for (const block of content) {
@@ -27,8 +36,8 @@ export const extractToolCalls = (event: RawEvent): ToolCall[] => {
       calls.push({
         sessionId: event.sessionId,
         agentId: event.agentId,
-        slug: (event as Record<string, unknown>).slug as string || '',
-        timestamp: Date.now(),
+        slug: ((event as Record<string, unknown>).slug as string) || '',
+        timestamp: ts,
         toolName: (toolBlock.name as string) || 'unknown',
         toolInput: (toolBlock.input as Record<string, unknown>) || {},
         cwd: event.cwd,
@@ -45,6 +54,7 @@ export const extractToolResults = (event: RawEvent): ToolResult[] => {
   const content = event.message?.content;
   if (!Array.isArray(content)) return [];
 
+  const ts = parseEventTimestamp(event);
   const results: ToolResult[] = [];
 
   for (const block of content) {
@@ -68,8 +78,8 @@ export const extractToolResults = (event: RawEvent): ToolResult[] => {
       results.push({
         sessionId: event.sessionId,
         agentId: event.agentId,
-        slug: (event as Record<string, unknown>).slug as string || '',
-        timestamp: Date.now(),
+        slug: ((event as Record<string, unknown>).slug as string) || '',
+        timestamp: ts,
         toolUseId: String(resultBlock.tool_use_id || ''),
         content: text,
         isError: Boolean(resultBlock.is_error),
@@ -79,6 +89,20 @@ export const extractToolResults = (event: RawEvent): ToolResult[] => {
   }
 
   return results;
+};
+
+export const extractUsage = (event: RawEvent): TokenUsage | null => {
+  if (event.type !== 'assistant') return null;
+
+  const usage = event.message?.usage;
+  if (!usage) return null;
+
+  return {
+    inputTokens: usage.input_tokens ?? 0,
+    cacheCreationTokens: usage.cache_creation_input_tokens ?? 0,
+    cacheReadTokens: usage.cache_read_input_tokens ?? 0,
+    outputTokens: usage.output_tokens ?? 0,
+  };
 };
 
 export const parseLines = (lines: string[]): ToolCall[] => {
@@ -102,4 +126,21 @@ export const parseAllEvents = (lines: string[]): SecurityEvent[] => {
     }
   }
   return events;
+};
+
+export const parseUsageFromLines = (lines: string[]): TokenUsage => {
+  const total: TokenUsage = { inputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0, outputTokens: 0 };
+  for (const line of lines) {
+    const event = parseLine(line);
+    if (event) {
+      const usage = extractUsage(event);
+      if (usage) {
+        total.inputTokens += usage.inputTokens;
+        total.cacheCreationTokens += usage.cacheCreationTokens;
+        total.cacheReadTokens += usage.cacheReadTokens;
+        total.outputTokens += usage.outputTokens;
+      }
+    }
+  }
+  return total;
 };

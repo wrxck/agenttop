@@ -44,3 +44,5 @@ export const getPlatform = (): 'linux' | 'darwin' | 'win32' => {
   if (p === 'win32') return 'win32';
   return 'linux';
 };
+
+export { getConfigDir } from './config/store.js';
