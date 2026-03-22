@@ -43,7 +43,7 @@ export class Watcher {
     this.watcher = watch(globs, {
       persistent: true,
       ignoreInitial: false,
-      awaitWriteFinish: false,
+      awaitWriteFinish: { stabilityThreshold: 100, pollInterval: 50 },
       usePolling: false,
     });
 
