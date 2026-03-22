@@ -31,6 +31,8 @@ export interface UpdatesConfig {
 export interface PromptsConfig {
   hook: 'pending' | 'installed' | 'dismissed';
   mcp: 'pending' | 'installed' | 'dismissed';
+  theme: 'pending' | 'done' | 'dismissed';
+  tour: 'pending' | 'done' | 'dismissed';
 }
 
 export interface KeybindingsConfig {
@@ -140,6 +142,8 @@ const defaultConfig = (): Config => ({
   prompts: {
     hook: 'pending',
     mcp: 'pending',
+    theme: 'pending',
+    tour: 'pending',
   },
   archived: {},
   archiveExpiryDays: 0,
