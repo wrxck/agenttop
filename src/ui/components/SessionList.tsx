@@ -62,6 +62,7 @@ export const SessionList: React.FC<SessionListProps> = React.memo(
       <Box
         flexDirection="column"
         width={SIDEBAR_WIDTH}
+        flexShrink={0}
         borderStyle="single"
         borderColor={focused ? colors.primary : colors.border}
         overflow="hidden"
