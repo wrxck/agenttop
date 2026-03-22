@@ -164,15 +164,10 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
         )}
 
         {merged && mergedSessions && mergedSessions.some((s) => s.pid === null) && (
-          <Box paddingX={1} flexDirection="column">
-            <Text color={colors.muted}> </Text>
-            {mergedSessions
-              .filter((s) => s.pid === null)
-              .map((s) => (
-                <Text key={s.sessionId} color={colors.muted}>
-                  resume {s.slug.slice(0, 8)}: <Text color={colors.text}>claude --resume {s.sessionId}</Text>
-                </Text>
-              ))}
+          <Box paddingX={1}>
+            <Text color={colors.muted}>
+              {mergedSessions.filter((s) => s.pid === null).length} inactive — resume with claude --resume {'<id>'}
+            </Text>
           </Box>
         )}
       </Box>
