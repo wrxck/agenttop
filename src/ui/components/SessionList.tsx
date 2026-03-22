@@ -28,17 +28,32 @@ const formatTokens = (n: number): string => {
 
 const truncate = (s: string, max: number): string => (s.length > max ? s.slice(0, max - 1) + '\u2026' : s);
 
-const SIDEBAR_WIDTH = 28;
+const getDisplayName = (session: Session): string => {
+  if (session.nickname) return session.nickname;
+  if (session.cwd) {
+    const parts = session.cwd.replace(/\/+$/, '').split('/');
+    return parts[parts.length - 1] || session.slug;
+  }
+  if (session.project) {
+    const parts = session.project.replace(/\/+$/, '').split('/');
+    return parts[parts.length - 1] || session.slug;
+  }
+  return session.slug;
+};
+
+const SIDEBAR_WIDTH = 30;
 const INNER_WIDTH = SIDEBAR_WIDTH - 4;
+const LINES_PER_SESSION = 3;
 
 export const SessionList: React.FC<SessionListProps> = React.memo(
   ({ sessions, selectedIndex, focused, height, filter, viewingArchive }) => {
-    const viewportRows = height - 2;
-    const halfView = Math.floor(viewportRows / 2);
-    const scrollStart = Math.max(0, Math.min(selectedIndex - halfView, sessions.length - viewportRows));
+    const availableRows = height - 2;
+    const maxVisible = Math.max(1, Math.floor((availableRows + 1) / LINES_PER_SESSION));
+    const halfView = Math.floor(maxVisible / 2);
+    const scrollStart = Math.max(0, Math.min(selectedIndex - halfView, sessions.length - maxVisible));
     const start = Math.max(0, scrollStart);
-    const visible = sessions.slice(start, start + viewportRows);
-    const canScroll = sessions.length > viewportRows;
+    const visible = sessions.slice(start, start + maxVisible);
+    const canScroll = sessions.length > maxVisible;
 
     return (
       <Box
@@ -73,29 +88,30 @@ export const SessionList: React.FC<SessionListProps> = React.memo(
         {visible.map((session, vi) => {
           const realIdx = start + vi;
           const isSelected = realIdx === selectedIndex;
-          const indicator = isSelected ? '>' : ' ';
-          const nameMaxLen = INNER_WIDTH - 2;
-          const displayName = truncate(session.nickname || session.slug, nameMaxLen);
+          const isActive = session.pid !== null;
+          const indicator = isSelected ? '\u25b8' : ' ';
+          const statusDot = isActive ? '\u25cf' : '\u25cb';
+          const displayName = truncate(getDisplayName(session), INNER_WIDTH - 4);
           const totalIn = session.usage.inputTokens + session.usage.cacheReadTokens;
           const model = formatModel(session.model);
-          const isActive = session.pid !== null;
           const nameColor = isSelected ? colors.bright : isActive ? colors.secondary : colors.text;
+          const dotColor = isActive ? colors.success : colors.muted;
 
           return (
             <Box
               key={session.sessionId}
               flexDirection="column"
               paddingX={1}
-              paddingY={0}
               backgroundColor={isSelected ? colors.selected : undefined}
             >
               <Text color={nameColor} bold={isSelected} wrap="truncate">
-                {indicator} {displayName}
+                {indicator} <Text color={dotColor}>{statusDot}</Text> {displayName}
               </Text>
               <Text color={colors.muted} wrap="truncate">
-                {'  '}
+                {'    '}
                 {model} {formatTokens(totalIn)}in {formatTokens(session.usage.outputTokens)}out
               </Text>
+              {vi < visible.length - 1 && <Text color={colors.border}>{'\u2500'.repeat(INNER_WIDTH)}</Text>}
             </Box>
           );
         })}
