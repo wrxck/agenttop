@@ -1,0 +1,44 @@
+{
+  "name": "agenttop",
+  "version": "1.0.0",
+  "description": "Real-time terminal dashboard for monitoring AI coding agent sessions — like htop for agents",
+  "type": "module",
+  "bin": {
+    "agenttop": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "hooks"
+  ],
+  "scripts": {
+    "build": "tsup && chmod +x dist/index.js && mkdir -p hooks && cp src/hooks/agenttop-guard.py hooks/",
+    "dev": "tsup --watch",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "agenttop",
+    "ai-agent",
+    "claude-code",
+    "monitor",
+    "dashboard",
+    "tui",
+    "security",
+    "htop"
+  ],
+  "author": "Matt Hesketh <matt@heskethwebdesign.co.uk>",
+  "license": "MIT",
+  "engines": {
+    "node": "18.0.0"
+  },
+  "dependencies": {
+    "chokidar": "4.0.3",
+    "ink": "6.0.0",
+    "react": "19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.3",
+    "@types/react": "19.1.2",
+    "tsup": "8.5.0",
+    "typescript": "5.8.3"
+  }
+}

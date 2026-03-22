@@ -1,0 +1,105 @@
+import type { RawEvent, ToolCall, ToolResult, SecurityEvent } from '../discovery/types.js';
+
+export const parseLine = (line: string): RawEvent | null => {
+  try {
+    return JSON.parse(line) as RawEvent;
+  } catch {
+    return null;
+  }
+};
+
+export const extractToolCalls = (event: RawEvent): ToolCall[] => {
+  if (event.type !== 'assistant') return [];
+
+  const content = event.message?.content;
+  if (!Array.isArray(content)) return [];
+
+  const calls: ToolCall[] = [];
+
+  for (const block of content) {
+    if (
+      typeof block === 'object' &&
+      block !== null &&
+      'type' in block &&
+      (block as Record<string, unknown>).type === 'tool_use'
+    ) {
+      const toolBlock = block as Record<string, unknown>;
+      calls.push({
+        sessionId: event.sessionId,
+        agentId: event.agentId,
+        slug: (event as Record<string, unknown>).slug as string || '',
+        timestamp: Date.now(),
+        toolName: (toolBlock.name as string) || 'unknown',
+        toolInput: (toolBlock.input as Record<string, unknown>) || {},
+        cwd: event.cwd,
+      });
+    }
+  }
+
+  return calls;
+};
+
+export const extractToolResults = (event: RawEvent): ToolResult[] => {
+  if (event.type !== 'user') return [];
+
+  const content = event.message?.content;
+  if (!Array.isArray(content)) return [];
+
+  const results: ToolResult[] = [];
+
+  for (const block of content) {
+    if (
+      typeof block === 'object' &&
+      block !== null &&
+      'type' in block &&
+      (block as Record<string, unknown>).type === 'tool_result'
+    ) {
+      const resultBlock = block as Record<string, unknown>;
+      const resultContent = resultBlock.content;
+      let text = '';
+      if (typeof resultContent === 'string') {
+        text = resultContent;
+      } else if (Array.isArray(resultContent)) {
+        text = resultContent
+          .map((c) => (typeof c === 'object' && c !== null ? (c as Record<string, unknown>).text || '' : String(c)))
+          .join('\n');
+      }
+
+      results.push({
+        sessionId: event.sessionId,
+        agentId: event.agentId,
+        slug: (event as Record<string, unknown>).slug as string || '',
+        timestamp: Date.now(),
+        toolUseId: String(resultBlock.tool_use_id || ''),
+        content: text,
+        isError: Boolean(resultBlock.is_error),
+        cwd: event.cwd,
+      });
+    }
+  }
+
+  return results;
+};
+
+export const parseLines = (lines: string[]): ToolCall[] => {
+  const calls: ToolCall[] = [];
+  for (const line of lines) {
+    const event = parseLine(line);
+    if (event) {
+      calls.push(...extractToolCalls(event));
+    }
+  }
+  return calls;
+};
+
+export const parseAllEvents = (lines: string[]): SecurityEvent[] => {
+  const events: SecurityEvent[] = [];
+  for (const line of lines) {
+    const event = parseLine(line);
+    if (event) {
+      events.push(...extractToolCalls(event));
+      events.push(...extractToolResults(event));
+    }
+  }
+  return events;
+};

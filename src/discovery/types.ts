@@ -1,0 +1,95 @@
+export interface Session {
+  sessionId: string;
+  slug: string;
+  project: string;
+  cwd: string;
+  model: string;
+  version: string;
+  gitBranch: string;
+  pid: number | null;
+  cpu: number;
+  mem: number;
+  memMB: number;
+  agentCount: number;
+  agentIds: string[];
+  outputFiles: string[];
+  startTime: number;
+  lastActivity: number;
+}
+
+export interface ToolCall {
+  sessionId: string;
+  agentId: string;
+  slug: string;
+  timestamp: number;
+  toolName: string;
+  toolInput: Record<string, unknown>;
+  cwd: string;
+}
+
+export interface ToolResult {
+  sessionId: string;
+  agentId: string;
+  slug: string;
+  timestamp: number;
+  toolUseId: string;
+  content: string;
+  isError: boolean;
+  cwd: string;
+}
+
+export type SecurityEvent = ToolCall | ToolResult;
+
+export const isToolResult = (event: SecurityEvent): event is ToolResult =>
+  'toolUseId' in event;
+
+export const isToolCall = (event: SecurityEvent): event is ToolCall =>
+  'toolName' in event;
+
+export interface RawEvent {
+  type: 'user' | 'assistant' | 'tool_result';
+  sessionId: string;
+  agentId: string;
+  slug: string;
+  timestamp?: number;
+  cwd: string;
+  version: string;
+  gitBranch: string;
+  message: {
+    role: string;
+    content: unknown;
+  };
+}
+
+export type AlertSeverity = 'info' | 'warn' | 'high' | 'critical';
+
+export interface Alert {
+  id: string;
+  severity: AlertSeverity;
+  rule: string;
+  message: string;
+  sessionSlug: string;
+  sessionId: string;
+  event: SecurityEvent;
+  timestamp: number;
+}
+
+export interface ProcessInfo {
+  pid: number;
+  cpu: number;
+  mem: number;
+  memKB: number;
+  command: string;
+  startTime: string;
+}
+
+export interface CLIOptions {
+  allUsers: boolean;
+  noSecurity: boolean;
+  json: boolean;
+  alertLevel: AlertSeverity;
+  installHooks: boolean;
+  uninstallHooks: boolean;
+  help: boolean;
+  version: boolean;
+}
