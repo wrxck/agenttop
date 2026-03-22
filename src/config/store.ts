@@ -21,6 +21,18 @@ export interface NotificationsConfig {
 export interface AlertsConfig {
   logFile: string;
   enabled: boolean;
+  staleTimeout: number;
+  staleAlertSeverity: 'info' | 'warn' | 'high' | 'critical';
+  custom: CustomAlertRule[];
+}
+
+export interface CustomAlertRule {
+  name: string;
+  pattern: string;
+  match: 'input' | 'output' | 'toolName' | 'all';
+  severity: 'info' | 'warn' | 'high' | 'critical';
+  message: string;
+  enabled: boolean;
 }
 
 export interface UpdatesConfig {
@@ -60,6 +72,10 @@ export interface KeybindingsConfig {
   closePanel: string;
   sidebarNarrower: string;
   sidebarWider: string;
+  alertRules: string;
+  pin: string;
+  pinMoveUp: string;
+  pinMoveDown: string;
 }
 
 export interface Config {
@@ -82,6 +98,7 @@ export interface Config {
   sidebarWidth: number;
   theme: string;
   customThemes: Record<string, { name: string; colors: ThemeColors; toolColors: ToolColors }>;
+  pinnedSessions: string[];
 }
 
 export const getConfigDir = (): string => {
@@ -106,6 +123,9 @@ const defaultConfig = (): Config => ({
   alerts: {
     logFile: join(getConfigDir(), 'alerts.jsonl'),
     enabled: true,
+    staleTimeout: 60,
+    staleAlertSeverity: 'warn',
+    custom: [],
   },
   updates: {
     checkOnLaunch: true,
@@ -136,6 +156,10 @@ const defaultConfig = (): Config => ({
     closePanel: 'X',
     sidebarNarrower: '<',
     sidebarWider: '>',
+    alertRules: 'r',
+    pin: 'p',
+    pinMoveUp: 'P',
+    pinMoveDown: 'ctrl+p',
   },
   security: {
     enabled: true,
@@ -159,6 +183,7 @@ const defaultConfig = (): Config => ({
   sidebarWidth: 30,
   theme: 'one-dark',
   customThemes: {},
+  pinnedSessions: [],
 });
 
 const deepMerge = (target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> => {
@@ -288,3 +313,30 @@ export const deleteSessionFiles = (outputFiles: string[]): void => {
     }
   }
 };
+
+export const pinSession = (sessionId: string): void => {
+  const config = loadConfig();
+  if (!config.pinnedSessions.includes(sessionId)) {
+    config.pinnedSessions.push(sessionId);
+    saveConfig(config);
+  }
+};
+
+export const unpinSession = (sessionId: string): void => {
+  const config = loadConfig();
+  config.pinnedSessions = config.pinnedSessions.filter((id) => id !== sessionId);
+  saveConfig(config);
+};
+
+export const movePinned = (sessionId: string, direction: 'up' | 'down'): void => {
+  const config = loadConfig();
+  const idx = config.pinnedSessions.indexOf(sessionId);
+  if (idx === -1) return;
+  const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (newIdx < 0 || newIdx >= config.pinnedSessions.length) return;
+  config.pinnedSessions.splice(idx, 1);
+  config.pinnedSessions.splice(newIdx, 0, sessionId);
+  saveConfig(config);
+};
+
+export const getPinnedSessions = (): string[] => loadConfig().pinnedSessions;
