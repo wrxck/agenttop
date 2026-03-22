@@ -1,5 +1,6 @@
 import { execFile, spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -19,6 +20,31 @@ const getPackageVersion = async (): Promise<string> => {
 const getNpmPath = (): string => {
   const nodeDir = dirname(process.execPath);
   return join(nodeDir, process.platform === 'win32' ? 'npm.cmd' : 'npm');
+};
+
+export type InstallMethod = 'homebrew' | 'scoop' | 'npm';
+
+// detect how agenttop was installed by checking the executable path
+export const detectInstallMethod = (): InstallMethod => {
+  const execPath = process.execPath;
+  const thisFile = fileURLToPath(import.meta.url);
+
+  // homebrew: executable lives under /usr/local/Cellar, /opt/homebrew, or a homebrew prefix
+  if (
+    thisFile.includes('/Cellar/') ||
+    thisFile.includes('/homebrew/') ||
+    existsSync('/usr/local/Cellar/agenttop') ||
+    existsSync('/opt/homebrew/Cellar/agenttop')
+  ) {
+    return 'homebrew';
+  }
+
+  // scoop: executable lives under scoop directory on windows
+  if (process.platform === 'win32' && (execPath.includes('\\scoop\\') || thisFile.includes('\\scoop\\'))) {
+    return 'scoop';
+  }
+
+  return 'npm';
 };
 
 export interface UpdateInfo {
@@ -47,14 +73,39 @@ export const checkForUpdate = (): Promise<UpdateInfo> =>
   });
 
 export const installUpdate = (): Promise<string> => {
+  const method = detectInstallMethod();
+
+  if (method === 'homebrew') {
+    return new Promise((resolve, reject) => {
+      execFile('brew', ['upgrade', 'agenttop'], { timeout: 120000 }, (err, stdout) => {
+        if (err) {
+          // if brew upgrade fails (e.g. already latest), try reinstall
+          execFile('brew', ['reinstall', 'agenttop'], { timeout: 120000 }, (err2, stdout2) => {
+            if (err2) reject(err2);
+            else resolve(stdout2.trim());
+          });
+        } else {
+          resolve(stdout.trim());
+        }
+      });
+    });
+  }
+
+  if (method === 'scoop') {
+    return new Promise((resolve, reject) => {
+      execFile('scoop', ['update', 'agenttop'], { timeout: 120000, shell: true }, (err, stdout) => {
+        if (err) reject(err);
+        else resolve(stdout.trim());
+      });
+    });
+  }
+
+  // npm
   const npm = getNpmPath();
   return new Promise((resolve, reject) => {
-    execFile(npm, ['install', '-g', '--force', 'agenttop@latest'], { timeout: 60000 }, (err, stdout) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(stdout.trim());
-      }
+    execFile(npm, ['install', '-g', 'agenttop@latest'], { timeout: 60000 }, (err, stdout) => {
+      if (err) reject(err);
+      else resolve(stdout.trim());
     });
   });
 };
