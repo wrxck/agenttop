@@ -12,9 +12,19 @@ export const useUpdateChecker = (
 
   useEffect(() => {
     if (disabled || !checkOnLaunch) return;
-    try { const i = checkForUpdate(); if (i.available) setUpdateInfo(i); } catch { /* */ }
+    try {
+      const i = checkForUpdate();
+      if (i.available) setUpdateInfo(i);
+    } catch {
+      /* */
+    }
     const iv = setInterval(() => {
-      try { const i = checkForUpdate(); if (i.available) setUpdateInfo(i); } catch { /* */ }
+      try {
+        const i = checkForUpdate();
+        if (i.available) setUpdateInfo(i);
+      } catch {
+        /* */
+      }
     }, checkInterval);
     return () => clearInterval(iv);
   }, []);

@@ -32,34 +32,58 @@ export const ThemeMenu: React.FC<ThemeMenuProps> = React.memo(({ config, onClose
     toastTimer.current = setTimeout(() => setToast(''), 2500);
   };
 
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
+  useEffect(
+    () => () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    },
+    [],
+  );
 
   const themes = getAllThemes(localConfig.customThemes);
 
-  const previewTheme = useCallback((idx: number) => {
-    const t = themes[idx];
-    if (t) applyTheme(t);
-  }, [themes]);
+  const previewTheme = useCallback(
+    (idx: number) => {
+      const t = themes[idx];
+      if (t) applyTheme(t);
+    },
+    [themes],
+  );
 
-  const updateSelection = useCallback((newIdx: number) => {
-    setSelectedIdx(newIdx);
-    previewTheme(newIdx);
-  }, [previewTheme]);
+  const updateSelection = useCallback(
+    (newIdx: number) => {
+      setSelectedIdx(newIdx);
+      previewTheme(newIdx);
+    },
+    [previewTheme],
+  );
 
   useInput((input, key) => {
     if (view === 'naming') {
-      if (key.escape) { setView('list'); setNameInput(''); return; }
+      if (key.escape) {
+        setView('list');
+        setNameInput('');
+        return;
+      }
       if (key.return && nameInput.trim()) {
         const name = nameInput.trim();
-        if (themes.some((t) => t.name === name)) { showToast(`Theme '${name}' already exists`); return; }
+        if (themes.some((t) => t.name === name)) {
+          showToast(`Theme '${name}' already exists`);
+          return;
+        }
         if (namingAction === 'copy') {
           const source = themes[selectedIdx];
           const newTheme: ThemeDefinition = {
-            name, colors: { ...source.colors }, toolColors: { ...source.toolColors },
+            name,
+            colors: { ...source.colors },
+            toolColors: { ...source.toolColors },
           };
           setLocalConfig((c) => ({
-            ...c, theme: name,
-            customThemes: { ...c.customThemes, [name]: { name, colors: newTheme.colors, toolColors: newTheme.toolColors } },
+            ...c,
+            theme: name,
+            customThemes: {
+              ...c.customThemes,
+              [name]: { name, colors: newTheme.colors, toolColors: newTheme.toolColors },
+            },
           }));
           applyTheme(newTheme);
           showToast(`Created '${name}'`);
@@ -76,7 +100,10 @@ export const ThemeMenu: React.FC<ThemeMenuProps> = React.memo(({ config, onClose
         setNameInput('');
         return;
       }
-      if (key.backspace || key.delete) { setNameInput((v) => v.slice(0, -1)); return; }
+      if (key.backspace || key.delete) {
+        setNameInput((v) => v.slice(0, -1));
+        return;
+      }
       if (input && input.length === 1) setNameInput((v) => v + input);
       return;
     }
@@ -90,8 +117,14 @@ export const ThemeMenu: React.FC<ThemeMenuProps> = React.memo(({ config, onClose
       return;
     }
 
-    if (key.upArrow) { updateSelection(Math.max(0, selectedIdx - 1)); return; }
-    if (key.downArrow) { updateSelection(Math.min(themes.length - 1, selectedIdx + 1)); return; }
+    if (key.upArrow) {
+      updateSelection(Math.max(0, selectedIdx - 1));
+      return;
+    }
+    if (key.downArrow) {
+      updateSelection(Math.min(themes.length - 1, selectedIdx + 1));
+      return;
+    }
 
     if (key.return) {
       setLocalConfig((c) => ({ ...c, theme: themes[selectedIdx].name }));
@@ -178,9 +211,18 @@ export const ThemeMenu: React.FC<ThemeMenuProps> = React.memo(({ config, onClose
 
   return (
     <Box flexDirection="column" height={termHeight}>
-      <Box borderStyle="round" borderColor={colors.primary} flexDirection="column" paddingX={2} paddingY={1} height={termHeight}>
+      <Box
+        borderStyle="round"
+        borderColor={colors.primary}
+        flexDirection="column"
+        paddingX={2}
+        paddingY={1}
+        height={termHeight}
+      >
         <Box justifyContent="space-between" marginBottom={1}>
-          <Text color={colors.header} bold>THEMES</Text>
+          <Text color={colors.header} bold>
+            THEMES
+          </Text>
           <Text color={colors.muted}>enter:apply c:copy e:edit r:rename d:delete esc:back</Text>
         </Box>
 
@@ -198,7 +240,9 @@ export const ThemeMenu: React.FC<ThemeMenuProps> = React.memo(({ config, onClose
           return (
             <Box key={theme.name}>
               <Text color={isSelected ? colors.primary : colors.text}>
-                {isSelected ? '> ' : '  '}{isActive ? '* ' : '  '}{theme.name}
+                {isSelected ? '> ' : '  '}
+                {isActive ? '* ' : '  '}
+                {theme.name}
               </Text>
               <Text color={colors.muted}>{theme.builtin ? ' (built-in)' : ' (custom)'}</Text>
               <Text> </Text>

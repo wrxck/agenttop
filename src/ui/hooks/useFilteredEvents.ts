@@ -10,7 +10,5 @@ const applyFilter = (events: ToolCall[], filter: string): ToolCall[] => {
   );
 };
 
-export const useFilteredEvents = (
-  rawEvents: ToolCall[],
-  filter: string,
-): ToolCall[] => useMemo(() => applyFilter(rawEvents, filter), [rawEvents, filter]);
+export const useFilteredEvents = (rawEvents: ToolCall[], filter: string): ToolCall[] =>
+  useMemo(() => applyFilter(rawEvents, filter), [rawEvents, filter]);
