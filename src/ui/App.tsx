@@ -3,7 +3,16 @@ import { Box, Text, useApp, useInput, useStdout } from 'ink';
 
 import type { CLIOptions } from '../discovery/types.js';
 import type { Config } from '../config/store.js';
-import { setNickname, clearNickname, saveConfig } from '../config/store.js';
+import {
+  setNickname,
+  clearNickname,
+  saveConfig,
+  archiveSession,
+  unarchiveSession,
+  getArchived,
+  purgeExpiredArchives,
+  deleteSessionFiles,
+} from '../config/store.js';
 import { installHooks } from '../hooks/installer.js';
 import { installMcpConfig } from '../install-mcp.js';
 import { checkForUpdate, installUpdate } from '../updates.js';
@@ -16,6 +25,7 @@ import { SessionDetail } from './components/SessionDetail.js';
 import { SetupModal } from './components/SetupModal.js';
 import { FooterBar } from './components/FooterBar.js';
 import { SettingsMenu } from './components/SettingsMenu.js';
+import { ConfirmModal } from './components/ConfirmModal.js';
 import { useSessions } from './hooks/useSessions.js';
 import { useActivityStream } from './hooks/useActivityStream.js';
 import { useAlerts } from './hooks/useAlerts.js';
@@ -51,16 +61,34 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
   const [inputMode, setInputMode] = useState<InputMode>('normal');
   const [showSetup, setShowSetup] = useState(firstRun);
   const [filter, setFilter] = useState('');
+  const [activityFilter, setActivityFilter] = useState('');
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [updateStatus, setUpdateStatus] = useState('');
   const [showDetail, setShowDetail] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [viewingArchive, setViewingArchive] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; onConfirm: () => void } | null>(
+    null,
+  );
+  const [archivedIds, setArchivedIds] = useState<Set<string>>(() => new Set(Object.keys(getArchived())));
+
+  const refreshArchived = useCallback(() => {
+    setArchivedIds(new Set(Object.keys(getArchived())));
+  }, []);
 
   const { sessions, selectedSession, selectedIndex, selectNext, selectPrev, refresh } = useSessions(
     options.allUsers,
     filter || undefined,
+    archivedIds,
+    viewingArchive,
   );
-  const events = useActivityStream(selectedSession, options.allUsers);
+  const rawEvents = useActivityStream(selectedSession, options.allUsers);
+  const events = activityFilter
+    ? rawEvents.filter((e) => {
+        const lower = activityFilter.toLowerCase();
+        return e.toolName.toLowerCase().includes(lower) || JSON.stringify(e.toolInput).toLowerCase().includes(lower);
+      })
+    : rawEvents;
   const { alerts } = useAlerts(!options.noSecurity, options.alertLevel, options.allUsers, liveConfig);
 
   const nicknameInput = useTextInput(
@@ -75,14 +103,27 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
   );
   const filterInput = useTextInput(
     (value) => {
-      setFilter(value);
+      if (activePanel === 'sessions') {
+        setFilter(value);
+      } else {
+        setActivityFilter(value);
+      }
       setInputMode('normal');
     },
     () => {
-      setFilter('');
+      if (activePanel === 'sessions') {
+        setFilter('');
+      } else {
+        setActivityFilter('');
+      }
       setInputMode('normal');
     },
   );
+
+  useEffect(() => {
+    purgeExpiredArchives();
+    refreshArchived();
+  }, []);
 
   useEffect(() => {
     if (options.noUpdates || !liveConfig.updates.checkOnLaunch) return;
@@ -149,7 +190,7 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
   }, []);
 
   useInput((input, key) => {
-    if (showSetup || showSettings) return;
+    if (showSetup || showSettings || confirmAction) return;
 
     if (inputMode === 'nickname') {
       nicknameInput.handleInput(input, key);
@@ -204,15 +245,48 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
     }
     if (matchKey(kb.filter, input, key)) {
       setInputMode('filter');
-      filterInput.start(filter);
+      filterInput.start(activePanel === 'sessions' ? filter : activityFilter);
       return;
     }
-    if (key.escape && filter) {
-      setFilter('');
+    if (key.escape && (filter || activityFilter)) {
+      if (activePanel === 'sessions') setFilter('');
+      else setActivityFilter('');
       return;
     }
     if (matchKey(kb.settings, input, key)) {
       setShowSettings(true);
+      return;
+    }
+    if (matchKey(kb.viewArchive, input, key)) {
+      setViewingArchive((v) => !v);
+      return;
+    }
+    if (matchKey(kb.archive, input, key) && selectedSession) {
+      if (viewingArchive) {
+        unarchiveSession(selectedSession.sessionId);
+      } else {
+        archiveSession(selectedSession.sessionId);
+      }
+      refreshArchived();
+      refresh();
+      return;
+    }
+    if (matchKey(kb.delete, input, key) && selectedSession) {
+      const sess = selectedSession;
+      setConfirmAction({
+        title: 'Delete session?',
+        message: `Delete ${sess.nickname || sess.slug}? Output files will be removed.`,
+        onConfirm: () => {
+          deleteSessionFiles(sess.outputFiles);
+          clearNickname(sess.sessionId);
+          if (archivedIds.has(sess.sessionId)) {
+            unarchiveSession(sess.sessionId);
+            refreshArchived();
+          }
+          refresh();
+          setConfirmAction(null);
+        },
+      });
       return;
     }
     if (matchKey(kb.update, input, key) && updateInfo?.available) {
@@ -258,6 +332,19 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
     return <SettingsMenu config={liveConfig} onClose={handleSettingsClose} />;
   }
 
+  if (confirmAction) {
+    return (
+      <Box flexDirection="column" height={termHeight} justifyContent="center" alignItems="center">
+        <ConfirmModal
+          title={confirmAction.title}
+          message={confirmAction.message}
+          onConfirm={confirmAction.onConfirm}
+          onCancel={() => setConfirmAction(null)}
+        />
+      </Box>
+    );
+  }
+
   const rightPanel =
     showDetail && selectedSession ? (
       <SessionDetail session={selectedSession} focused={activePanel === 'activity'} height={mainHeight} />
@@ -268,6 +355,7 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
         focused={activePanel === 'activity'}
         height={mainHeight}
         scrollOffset={activityScroll}
+        filter={activityFilter || undefined}
       />
     );
 
@@ -280,6 +368,7 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
           selectedIndex={selectedIndex}
           focused={activePanel === 'sessions'}
           filter={filter || undefined}
+          viewingArchive={viewingArchive}
         />
         {rightPanel}
       </Box>
@@ -293,12 +382,15 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
       )}
       {inputMode === 'filter' && (
         <Box paddingX={1}>
+          <Text color={colors.muted}>{activePanel === 'sessions' ? 'sessions' : 'activity'}</Text>
           <Text color={colors.primary}>/</Text>
           <Text color={colors.bright}>{filterInput.value}</Text>
           <Text color={colors.muted}>_</Text>
         </Box>
       )}
-      {inputMode === 'normal' && <FooterBar keybindings={kb} updateStatus={updateStatus} />}
+      {inputMode === 'normal' && (
+        <FooterBar keybindings={kb} updateStatus={updateStatus} viewingArchive={viewingArchive} />
+      )}
     </Box>
   );
 };
