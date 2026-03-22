@@ -1,14 +1,18 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 
 import type { Session, ToolCall, ToolResult, ActivityEvent } from '../../discovery/types.js';
 import { Watcher } from '../../ingestion/watcher.js';
 
 const MAX_EVENTS = 200;
+const DEBOUNCE_MS = 80;
 
 export const useActivityStream = (session: Session | Session[] | null, allUsers: boolean): ActivityEvent[] => {
   const [calls, setCalls] = useState<ToolCall[]>([]);
   const [results, setResults] = useState<ToolResult[]>([]);
   const watcherRef = useRef<Watcher | null>(null);
+  const pendingCallsRef = useRef<ToolCall[]>([]);
+  const pendingResultsRef = useRef<ToolResult[]>([]);
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const sessions = session === null ? [] : Array.isArray(session) ? session : [session];
   const sessionKey = sessions
@@ -17,9 +21,31 @@ export const useActivityStream = (session: Session | Session[] | null, allUsers:
     .join(',');
   const sessionIdSet = new Set(sessions.map((s) => s.sessionId));
 
+  const flush = useCallback(() => {
+    flushTimerRef.current = null;
+    const pc = pendingCallsRef.current;
+    const pr = pendingResultsRef.current;
+    if (pc.length > 0) {
+      const batch = pc.splice(0);
+      setCalls((prev) => [...prev, ...batch].slice(-MAX_EVENTS));
+    }
+    if (pr.length > 0) {
+      const batch = pr.splice(0);
+      setResults((prev) => [...prev, ...batch].slice(-MAX_EVENTS * 2));
+    }
+  }, []);
+
+  const scheduleFlush = useCallback(() => {
+    if (!flushTimerRef.current) {
+      flushTimerRef.current = setTimeout(flush, DEBOUNCE_MS);
+    }
+  }, [flush]);
+
   useEffect(() => {
     setCalls([]);
     setResults([]);
+    pendingCallsRef.current = [];
+    pendingResultsRef.current = [];
 
     if (sessions.length === 0) return;
 
@@ -52,13 +78,15 @@ export const useActivityStream = (session: Session | Session[] | null, allUsers:
     const callHandler = (newCalls: ToolCall[]) => {
       const matched = newCalls.filter((c) => sessionIdSet.has(c.sessionId));
       if (matched.length === 0) return;
-      setCalls((prev) => [...prev, ...matched].slice(-MAX_EVENTS));
+      pendingCallsRef.current.push(...matched);
+      scheduleFlush();
     };
 
     const resultHandler = (newResults: ToolResult[]) => {
       const matched = newResults.filter((r) => sessionIdSet.has(r.sessionId));
       if (matched.length === 0) return;
-      setResults((prev) => [...prev, ...matched].slice(-MAX_EVENTS * 2));
+      pendingResultsRef.current.push(...matched);
+      scheduleFlush();
     };
 
     const watcher = new Watcher(callHandler, allUsers, undefined, undefined, resultHandler);
@@ -67,6 +95,7 @@ export const useActivityStream = (session: Session | Session[] | null, allUsers:
 
     return () => {
       cancelled = true;
+      if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
       watcher.stop();
       watcherRef.current = null;
     };

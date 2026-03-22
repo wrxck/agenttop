@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text } from 'ink';
 
 import { colors } from '../theme.js';
@@ -11,15 +11,22 @@ interface StatusBarProps {
   updateInfo?: UpdateInfo | null;
 }
 
+const formatTime = (): string => new Date().toLocaleTimeString('en-GB', { hour12: false });
+
 export const StatusBar: React.FC<StatusBarProps> = React.memo(({ sessionCount, alertCount, version, updateInfo }) => {
-  const [time, setTime] = useState(new Date());
+  const [timeStr, setTimeStr] = useState(formatTime);
+  const lastRef = useRef(timeStr);
 
   useEffect(() => {
-    const interval = setInterval(() => setTime(new Date()), 1000);
+    const interval = setInterval(() => {
+      const next = formatTime();
+      if (next !== lastRef.current) {
+        lastRef.current = next;
+        setTimeStr(next);
+      }
+    }, 1000);
     return () => clearInterval(interval);
   }, []);
-
-  const timeStr = time.toLocaleTimeString('en-GB', { hour12: false });
 
   return (
     <Box borderStyle="single" borderColor={colors.border} paddingX={1} justifyContent="space-between">
