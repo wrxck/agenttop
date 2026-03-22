@@ -2,6 +2,8 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync, renameSyn
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 
+import type { ThemeColors, ToolColors } from './themes.js';
+
 export interface SecurityRulesConfig {
   network: boolean;
   exfiltration: boolean;
@@ -48,6 +50,11 @@ export interface KeybindingsConfig {
   archive: string;
   delete: string;
   viewArchive: string;
+  split: string;
+  pinLeft: string;
+  pinRight: string;
+  swapPanels: string;
+  closePanel: string;
 }
 
 export interface Config {
@@ -67,6 +74,8 @@ export interface Config {
   prompts: PromptsConfig;
   archived: Record<string, number>;
   archiveExpiryDays: number;
+  theme: string;
+  customThemes: Record<string, { name: string; colors: ThemeColors; toolColors: ToolColors }>;
 }
 
 export const getConfigDir = (): string => {
@@ -112,6 +121,11 @@ const defaultConfig = (): Config => ({
     archive: 'a',
     delete: 'd',
     viewArchive: 'A',
+    split: 'x',
+    pinLeft: '1',
+    pinRight: '2',
+    swapPanels: 'S',
+    closePanel: 'X',
   },
   security: {
     enabled: true,
@@ -129,6 +143,8 @@ const defaultConfig = (): Config => ({
   },
   archived: {},
   archiveExpiryDays: 0,
+  theme: 'one-dark',
+  customThemes: {},
 });
 
 const deepMerge = (target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> => {
