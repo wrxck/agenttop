@@ -1,4 +1,4 @@
-import { realpathSync, readdirSync } from 'node:fs';
+import { existsSync, realpathSync, readdirSync } from 'node:fs';
 import { homedir, platform } from 'node:os';
 import { join } from 'node:path';
 
@@ -37,6 +37,33 @@ export const getTaskDirs = (allUsers: boolean): string[] => {
   }
 
   return [join(tmp, `claude-${uid}`)];
+};
+
+export const getProjectsDirs = (allUsers: boolean): string[] => {
+  const dirs: string[] = [];
+  const home = homedir();
+  const primary = join(home, '.claude', 'projects');
+  if (existsSync(primary)) dirs.push(primary);
+
+  if (allUsers) {
+    try {
+      const homeBase = platform() === 'darwin' ? '/Users' : '/home';
+      for (const user of readdirSync(homeBase)) {
+        const userProjects = join(homeBase, user, '.claude', 'projects');
+        if (userProjects !== primary && existsSync(userProjects)) {
+          dirs.push(userProjects);
+        }
+      }
+    } catch {
+      // can't read /home — skip
+    }
+    const rootProjects = join('/root', '.claude', 'projects');
+    if (!dirs.includes(rootProjects) && existsSync(rootProjects)) {
+      dirs.push(rootProjects);
+    }
+  }
+
+  return dirs;
 };
 
 export const getPlatform = (): 'linux' | 'darwin' | 'win32' => {
