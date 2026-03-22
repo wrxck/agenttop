@@ -13,6 +13,9 @@ import {
   deleteSessionFiles,
   loadConfig,
   saveConfig,
+  pinSession,
+  unpinSession,
+  movePinned,
 } from '../config/store.js';
 import { resolveTheme } from '../config/themes.js';
 import { installUpdate, restartProcess } from '../updates.js';
@@ -207,6 +210,27 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
     return activityFilter;
   }, [activePanel, filter, split.leftFilter, split.rightFilter, activityFilter]);
 
+  const handleTogglePin = useCallback(
+    (sessionId: string) => {
+      const cfg = loadConfig();
+      if (cfg.pinnedSessions.includes(sessionId)) {
+        unpinSession(sessionId);
+      } else {
+        pinSession(sessionId);
+      }
+      refresh();
+    },
+    [refresh],
+  );
+
+  const handleMovePinned = useCallback(
+    (sessionId: string, dir: 'up' | 'down') => {
+      movePinned(sessionId, dir);
+      refresh();
+    },
+    [refresh],
+  );
+
   useKeyHandler({
     kb,
     activePanel,
@@ -277,6 +301,8 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
       clearNickname(id);
       refresh();
     },
+    onTogglePin: handleTogglePin,
+    onMovePinned: handleMovePinned,
     onArchive: (id) => {
       archiveSession(id);
       refreshArchived();

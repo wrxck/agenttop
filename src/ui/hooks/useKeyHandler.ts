@@ -11,6 +11,7 @@ const matchKey = (binding: string, input: string, key: Record<string, unknown>):
   if (binding === 'tab') return Boolean(key.tab);
   if (binding === 'shift+tab') return Boolean(key.shift && key.tab);
   if (binding === 'enter') return Boolean(key.return);
+  if (binding.startsWith('ctrl+')) return Boolean(key.ctrl) && input === binding.slice(5);
   return input === binding;
 };
 
@@ -85,6 +86,8 @@ export interface KeyHandlerDeps {
   filterInput: TextInputState;
 
   onClearNickname: (sessionId: string) => void;
+  onTogglePin: (sessionId: string) => void;
+  onMovePinned: (sessionId: string, direction: 'up' | 'down') => void;
   onArchive: (sessionId: string) => void;
   onUnarchive: (sessionId: string) => void;
   onDelete: (sess: Session) => void;
@@ -283,6 +286,18 @@ export const useKeyHandler = (deps: KeyHandlerDeps): void => {
     }
     if (matchKey(d.kb.viewArchive, input, key)) {
       d.setViewingArchive((v) => !v);
+      return;
+    }
+    if (matchKey(d.kb.pin, input, key) && d.selectedSession) {
+      d.onTogglePin(d.selectedSession.sessionId);
+      return;
+    }
+    if (matchKey(d.kb.pinMoveUp, input, key) && d.selectedSession?.pinned) {
+      d.onMovePinned(d.selectedSession.sessionId, 'up');
+      return;
+    }
+    if (matchKey(d.kb.pinMoveDown, input, key) && d.selectedSession?.pinned) {
+      d.onMovePinned(d.selectedSession.sessionId, 'down');
       return;
     }
     if (matchKey(d.kb.archive, input, key) && d.selectedSession) {
