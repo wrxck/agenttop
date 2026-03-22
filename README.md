@@ -2,11 +2,11 @@
 
 [![npm version](https://img.shields.io/npm/v/agenttop.svg)](https://www.npmjs.com/package/agenttop)
 [![npm downloads](https://img.shields.io/npm/dm/agenttop.svg)](https://www.npmjs.com/package/agenttop)
-[![CI](https://github.com/heskethwebdesign/agenttop/actions/workflows/ci.yml/badge.svg)](https://github.com/heskethwebdesign/agenttop/actions/workflows/ci.yml)
+[![CI](https://github.com/wrxck/agenttop/actions/workflows/ci.yml/badge.svg)](https://github.com/wrxck/agenttop/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/node/v/agenttop.svg)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](https://www.typescriptlang.org/)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/heskethwebdesign/agenttop/pulls)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/wrxck/agenttop/pulls)
 [![npm bundle size](https://img.shields.io/bundlephobia/minzip/agenttop)](https://bundlephobia.com/package/agenttop)
 
 Real-time terminal dashboard for monitoring AI coding agent sessions — like `htop` for agents.

@@ -33,11 +33,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/heskethwebdesign/agenttop.git"
+    "url": "https://github.com/wrxck/agenttop.git"
   },
-  "homepage": "https://github.com/heskethwebdesign/agenttop#readme",
+  "homepage": "https://github.com/wrxck/agenttop#readme",
   "bugs": {
-    "url": "https://github.com/heskethwebdesign/agenttop/issues"
+    "url": "https://github.com/wrxck/agenttop/issues"
   },
 "author": "Matt Hesketh <matt@heskethwebdesign.co.uk>",
   "license": "MIT",
