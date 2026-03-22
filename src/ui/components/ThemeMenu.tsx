@@ -141,20 +141,32 @@ export const ThemeMenu: React.FC<ThemeMenuProps> = React.memo(({ config, onClose
     }
 
     const selected = themes[selectedIdx];
-    if (input === 'e' && !selected.builtin) {
+    if (input === 'e') {
+      if (selected.builtin) {
+        showToast('Copy (c) a built-in theme to edit it');
+        return;
+      }
       setEditingTheme(selected);
       setView('editor');
       return;
     }
 
-    if (input === 'r' && !selected.builtin) {
+    if (input === 'r') {
+      if (selected.builtin) {
+        showToast('Copy (c) a built-in theme to rename it');
+        return;
+      }
       setNamingAction('rename');
       setNameInput(selected.name);
       setView('naming');
       return;
     }
 
-    if (input === 'd' && !selected.builtin) {
+    if (input === 'd') {
+      if (selected.builtin) {
+        showToast('Cannot delete built-in themes');
+        return;
+      }
       const updated = { ...localConfig.customThemes };
       delete updated[selected.name];
       const newTheme = localConfig.theme === selected.name ? 'one-dark' : localConfig.theme;
