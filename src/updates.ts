@@ -18,7 +18,7 @@ const getPackageVersion = async (): Promise<string> => {
 // so updates go to the right location even when running under sudo
 const getNpmPath = (): string => {
   const nodeDir = dirname(process.execPath);
-  return join(nodeDir, 'npm');
+  return join(nodeDir, process.platform === 'win32' ? 'npm.cmd' : 'npm');
 };
 
 export interface UpdateInfo {

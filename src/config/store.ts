@@ -86,7 +86,9 @@ export interface Config {
 
 export const getConfigDir = (): string => {
   const xdg = process.env.XDG_CONFIG_HOME;
-  return xdg ? join(xdg, 'agenttop') : join(homedir(), '.config', 'agenttop');
+  if (xdg) return join(xdg, 'agenttop');
+  if (process.platform === 'win32' && process.env.APPDATA) return join(process.env.APPDATA, 'agenttop');
+  return join(homedir(), '.config', 'agenttop');
 };
 
 export const getConfigPath = (): string => join(getConfigDir(), 'config.json');

@@ -1,6 +1,8 @@
 import { existsSync, realpathSync, readdirSync } from 'node:fs';
-import { homedir, platform } from 'node:os';
+import { homedir, platform, tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
+
+const os = platform();
 
 const resolvePath = (p: string): string => {
   try {
@@ -10,11 +12,23 @@ const resolvePath = (p: string): string => {
   }
 };
 
-export const getUid = (): number => process.getuid?.() ?? 0;
+export const getUid = (): string => {
+  const uid = process.getuid?.();
+  if (uid !== undefined) return String(uid);
+  try {
+    return userInfo().username;
+  } catch {
+    return process.env['USERNAME'] || process.env['USER'] || '0';
+  }
+};
 
-export const isRoot = (): boolean => getUid() === 0;
+export const isRoot = (): boolean => process.getuid?.() === 0;
 
-export const getTmpDir = (): string => resolvePath(platform() === 'darwin' ? '/private/tmp' : '/tmp');
+export const getTmpDir = (): string => {
+  if (os === 'darwin') return resolvePath('/private/tmp');
+  if (os === 'win32') return tmpdir();
+  return resolvePath('/tmp');
+};
 
 export const getClaudeHome = (): string => join(homedir(), '.claude');
 
@@ -24,7 +38,7 @@ export const getTaskDirs = (allUsers: boolean): string[] => {
   const tmp = getTmpDir();
   const uid = getUid();
 
-  if (allUsers) {
+  if (allUsers && os !== 'win32') {
     try {
       const dirs = readdirSync(tmp)
         .filter((d: string) => d.startsWith('claude-'))
@@ -38,7 +52,6 @@ export const getTaskDirs = (allUsers: boolean): string[] => {
 
   const dirs = [join(tmp, `claude-${uid}`)];
 
-  // when running as root via sudo, also include the original user's task dir
   if (isRoot()) {
     try {
       const sudoUid = process.env['SUDO_UID'];
@@ -62,36 +75,43 @@ export const getProjectsDirs = (allUsers: boolean): string[] => {
   const home = homedir();
   addDir(join(home, '.claude', 'projects'));
 
-  // when running as root (e.g. sudo agenttop), always include /root and the
-  // original user's home so both root-owned and user-owned sessions appear
   if (isRoot()) {
     addDir(join('/root', '.claude', 'projects'));
     const sudoUser = process.env['SUDO_USER'];
     if (sudoUser) {
-      const homeBase = platform() === 'darwin' ? '/Users' : '/home';
+      const homeBase = os === 'darwin' ? '/Users' : '/home';
       addDir(join(homeBase, sudoUser, '.claude', 'projects'));
     }
   }
 
-  if (allUsers) {
+  if (allUsers && os !== 'win32') {
     try {
-      const homeBase = platform() === 'darwin' ? '/Users' : '/home';
+      const homeBase = os === 'darwin' ? '/Users' : '/home';
       for (const user of readdirSync(homeBase)) {
         addDir(join(homeBase, user, '.claude', 'projects'));
       }
     } catch {
-      // can't read /home — skip
+      // can't enumerate home dirs — skip
     }
-    addDir(join('/root', '.claude', 'projects'));
+    if (os !== 'darwin') addDir(join('/root', '.claude', 'projects'));
+  }
+
+  if (allUsers && os === 'win32') {
+    try {
+      for (const user of readdirSync('C:\\Users')) {
+        addDir(join('C:\\Users', user, '.claude', 'projects'));
+      }
+    } catch {
+      // can't enumerate user dirs — skip
+    }
   }
 
   return dirs;
 };
 
 export const getPlatform = (): 'linux' | 'darwin' | 'win32' => {
-  const p = platform();
-  if (p === 'darwin') return 'darwin';
-  if (p === 'win32') return 'win32';
+  if (os === 'darwin') return 'darwin';
+  if (os === 'win32') return 'win32';
   return 'linux';
 };
 

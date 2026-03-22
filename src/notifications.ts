@@ -38,6 +38,16 @@ export const notify = (alert: Alert, config: NotificationsConfig): void => {
         ['-e', `display notification ${JSON.stringify(body)} with title ${JSON.stringify(title)}`],
         { timeout: 3000 },
       );
+    } else if (os === 'win32') {
+      execFile(
+        'powershell',
+        [
+          '-NoProfile',
+          '-Command',
+          `Add-Type -AssemblyName System.Windows.Forms; $n = New-Object System.Windows.Forms.NotifyIcon; $n.Icon = [System.Drawing.SystemIcons]::Information; $n.Visible = $true; $n.ShowBalloonTip(5000, ${JSON.stringify(title)}, ${JSON.stringify(body)}, 'Warning'); Start-Sleep -Seconds 6; $n.Dispose()`,
+        ],
+        { timeout: 10000 },
+      );
     }
   }
 };

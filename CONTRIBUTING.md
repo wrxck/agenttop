@@ -20,18 +20,15 @@ node dist/index.js
 ## Development workflow
 
 1. Fork the repo and clone your fork
-2. Create a feature branch from `develop`: `git checkout -b feat/my-feature develop`
+2. Create a feature branch from `main`: `git checkout -b feat/my-feature main`
 3. Make your changes
 4. Build and verify: `npm run build && node dist/index.js --version`
-5. Push and open a PR targeting `develop`
+5. Push and open a PR targeting `main`
 
 ### Branch model
 
-- **main** — production releases only
-- **develop** — integration branch, all PRs target here
+- **main** — primary branch, all PRs target here
 - **feat/\***, **fix/\***, **chore/\*** — working branches
-
-Never push directly to `main` or `develop`.
 
 ## Code standards
 
@@ -85,8 +82,8 @@ To add a new rule:
 
 ## Pull request checklist
 
-- [ ] Branch created from `develop`
-- [ ] PR targets `develop` (not `main`)
+- [ ] Branch created from `main`
+- [ ] PR targets `main`
 - [ ] `npm run build` succeeds
 - [ ] `node dist/index.js --version` works
 - [ ] `node dist/index.js --help` works

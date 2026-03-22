@@ -6,6 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/node/v/agenttop.svg)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](https://www.typescriptlang.org/)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue.svg)](#platform-support)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/wrxck/agenttop/pulls)
 [![GitHub code size](https://img.shields.io/github/languages/code-size/wrxck/agenttop)](https://github.com/wrxck/agenttop)
 
@@ -20,6 +21,7 @@ Read more about [why agenttop was built](https://blog.matthesketh.pro/blog/agent
 ## Table of contents
 
 - [Install](#install)
+- [Platform support](#platform-support)
 - [Usage](#usage)
 - [Token usage](#token-usage)
 - [Session nicknames](#session-nicknames)
@@ -45,6 +47,8 @@ Read more about [why agenttop was built](https://blog.matthesketh.pro/blog/agent
 
 ## Install
 
+### npm (all platforms)
+
 ```bash
 npx agenttop
 ```
@@ -55,16 +59,43 @@ Or install globally:
 npm install -g agenttop
 ```
 
+### Homebrew (macOS / Linux)
+
+```bash
+brew tap wrxck/tap
+brew install agenttop
+```
+
+## Platform support
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| **Linux** (Ubuntu, Debian, Fedora, Arch, etc.) | Fully supported | Primary development platform |
+| **macOS** (Intel + Apple Silicon) | Fully supported | Uses `lsof` for process CWD resolution |
+| **Windows** (10/11 + Windows Terminal) | Supported | Uses PowerShell for process discovery; `--all-users` not available |
+
+Development and primary testing is done on Ubuntu. If you encounter issues on other platforms, please [open an issue](https://github.com/wrxck/agenttop/issues) or feel free to contribute a fix.
+
+CI runs on all three platforms (Ubuntu, macOS, Windows) across Node.js 18, 20, and 22.
+
+### Platform-specific config paths
+
+| Platform | Config path |
+|----------|-------------|
+| Linux | `~/.config/agenttop/config.json` (respects `XDG_CONFIG_HOME`) |
+| macOS | `~/.config/agenttop/config.json` (respects `XDG_CONFIG_HOME`) |
+| Windows | `%APPDATA%\agenttop\config.json` |
+
 ## Usage
 
 Run `agenttop` in one terminal while running Claude Code sessions in other tabs.
 
 ```
--- agenttop v0.6.0 ---- 3 sessions ---- 14:32:08 ---------------------
+-- agenttop v0.10.7 --- 3 sessions ---- 14:32:08 ---------------------
 | SESSIONS                 | ACTIVITY (cuddly-wiggling-sundae)           |
 |                          |                                             |
-| > cuddly-wiggling-sundae | 14:32:05 Bash    ls /tmp/claude-0/         |
-|   /home/matt | opus      | 14:32:03 Read    /root/.claude/CLAUDE.md   |
+| > cuddly-wiggling-sundae | 14:32:05 Bash    ls -la                    |
+|   /home/matt | opus      | 14:32:03 Read    CLAUDE.md                 |
 |   CPU 20% | 542MB | 3 ag | 14:31:58 Grep    pattern="sessionId"       |
 |   1.2k in | 340 out      | 14:31:55 Write   /home/matt/app/src/...    |
 |                          | 14:31:52 Bash    npm test                  |
@@ -82,7 +113,7 @@ Run `agenttop` in one terminal while running Claude Code sessions in other tabs.
 ```
 agenttop [options]
 
-  --all-users          Monitor all users (root only)
+  --all-users          Monitor all users (root only, Linux/macOS)
   --no-security        Disable security analysis
   --json               Stream events as JSON lines (no TUI)
   --plain              Stream events as plain text (no TUI)
@@ -118,7 +149,7 @@ Press `n` on a selected session to assign a nickname. The nickname replaces the 
 
 Press `N` to clear a nickname.
 
-Nicknames are stored in `~/.config/agenttop/config.json`.
+Nicknames are stored in your [config file](#configuration).
 
 ## Session filtering
 
@@ -188,7 +219,7 @@ In the theme menu:
 - **Delete** — press `d` to delete a custom theme
 - **Restore default** — press `Backspace` to reset to One Dark
 
-Custom themes are saved to `~/.config/agenttop/config.json` and persist across sessions.
+Custom themes are saved to your [config file](#configuration) and persist across sessions.
 
 ## Streaming modes
 
@@ -217,7 +248,7 @@ agenttop --plain > session.log
 Output format:
 ```
 SESSION cuddly-wiggling-sundae | opus | /home/matt | CPU 20% | 542MB | 1.2k in / 340 out
-14:32:05 cuddly-wiggling-sundae Bash     ls /tmp/claude-0/
+14:32:05 cuddly-wiggling-sundae Bash     ls -la
 ALERT 14:32:10 [warn] cuddly-wiggling-sundae: curl to external URL
 USAGE abc123 +100 in / +50 out
 ```
@@ -283,15 +314,15 @@ You can also run the MCP server directly via `agenttop-mcp` (installed as a sepa
 When security alerts are raised:
 
 - **Terminal bell** — `\x07` on high/critical alerts (configurable)
-- **Desktop notification** — via `notify-send` (linux) or `osascript` (macOS) for critical alerts
+- **Desktop notification** — via `notify-send` (Linux), `osascript` (macOS), or PowerShell toast (Windows)
 
 Rate-limited to max 1 desktop notification per 30 seconds.
 
-Configure in `config.json` under `notifications`, or disable entirely with `--no-notify`.
+Configure in your [config file](#configuration) under `notifications`, or disable entirely with `--no-notify`.
 
 ## Alert logging
 
-Alerts are logged to `~/.config/agenttop/alerts.jsonl` by default. One JSON line per alert.
+Alerts are logged to `alerts.jsonl` in your [config directory](#platform-specific-config-paths) by default. One JSON line per alert.
 
 The log file rotates when it exceeds 10MB (keeps 2 rotated files).
 
@@ -309,7 +340,7 @@ Disable with `--no-updates` or set `updates.checkOnLaunch: false` in config.
 
 ## Configuration
 
-Config file at `~/.config/agenttop/config.json` (respects `XDG_CONFIG_HOME`):
+Config file location depends on your platform — see [platform-specific config paths](#platform-specific-config-paths).
 
 ```json
 {
@@ -404,14 +435,14 @@ Default keybindings:
 
 ## How it works
 
-agenttop reads Claude Code's task output files from `/tmp/claude-<uid>/` using inotify-based file watching via [chokidar](https://github.com/paulmillr/chokidar). Each session writes JSONL events containing tool calls, tool results, and token usage, which agenttop parses and displays in real-time.
+agenttop reads Claude Code's session output files using cross-platform file watching via [chokidar](https://github.com/paulmillr/chokidar) (inotify on Linux, FSEvents on macOS, ReadDirectoryChangesW on Windows). Each session writes JSONL events containing tool calls, tool results, and token usage, which agenttop parses and displays in real-time.
 
 Three runtime dependencies: [ink](https://github.com/vadimdemedes/ink) (React-based TUI), chokidar (file watching), and [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/typescript-sdk) (MCP server). Everything else is Node built-ins.
 
 ## Multi-user support
 
 - **Non-root** — monitors your own sessions only
-- **Root** — use `--all-users` to monitor all users' sessions on the machine
+- **Root** — use `--all-users` to monitor all users' sessions on the machine (Linux/macOS only)
 
 ## Contributing
 
@@ -421,8 +452,7 @@ Ideas for contributions:
 
 - Support for additional agent platforms beyond Claude Code
 - New security rules
-- Themes and colour customisation
-- Windows support
+- Platform-specific improvements
 
 ## Trademark notice
 

@@ -1,45 +1,11 @@
-import { readdirSync, statSync, readlinkSync, openSync, readSync, closeSync } from 'node:fs';
+import { readdirSync, statSync, openSync, readSync, closeSync } from 'node:fs';
 import { join, basename } from 'node:path';
-import { execSync } from 'node:child_process';
 
 import { getTaskDirs, getProjectsDirs } from '../config.js';
 import type { Session, ProcessInfo, TokenUsage } from './types.js';
+import { getClaudeProcesses } from './platform.js';
 
-export const getClaudeProcesses = (): ProcessInfo[] => {
-  try {
-    const output = execSync('ps aux', { encoding: 'utf-8', timeout: 5000 });
-    const procs = output
-      .split('\n')
-      .filter(
-        (line) =>
-          (line.includes('/claude') || /\bclaude\b/.test(line)) && !line.includes('grep') && !line.includes('agenttop'),
-      )
-      .map((line) => {
-        const parts = line.trim().split(/\s+/);
-        const pid = parseInt(parts[1], 10);
-        let cwd = '';
-        try {
-          cwd = readlinkSync(`/proc/${pid}/cwd`);
-        } catch {
-          // no access or process gone
-        }
-        return {
-          pid,
-          cpu: parseFloat(parts[2]) || 0,
-          mem: parseFloat(parts[3]) || 0,
-          memKB: parseInt(parts[5], 10) || 0,
-          startTime: parts[8] || '',
-          command: parts.slice(10).join(' '),
-          cwd,
-        };
-      })
-      .filter((p) => !isNaN(p.pid))
-      .filter((p) => !p.command.startsWith('sudo'));
-    return procs;
-  } catch {
-    return [];
-  }
-};
+export { getClaudeProcesses };
 
 const readFirstLines = (filePath: string, bytes: number): string[] => {
   try {

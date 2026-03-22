@@ -1,53 +1,13 @@
-import { execFile } from 'node:child_process';
-import { open, stat, readlink } from 'node:fs/promises';
+import { open, stat } from 'node:fs/promises';
+import { normalize } from 'node:path';
 
-import type { ProcessInfo, TokenUsage } from './types.js';
+import type { TokenUsage } from './types.js';
 import { fileMetaCache } from './cache.js';
+import { getClaudeProcessesAsync } from './platform.js';
 
-export const normalisePath = (p: string): string => p.replace(/\/+$/, '');
+export { getClaudeProcessesAsync };
 
-export const getClaudeProcessesAsync = async (): Promise<ProcessInfo[]> => {
-  const stdout = await new Promise<string>((resolve) => {
-    execFile('ps', ['aux'], { encoding: 'utf-8', timeout: 5000, maxBuffer: 4 * 1024 * 1024 }, (err, out) => {
-      resolve(err || !out ? '' : out);
-    });
-  });
-
-  if (!stdout) return [];
-
-  const procs: ProcessInfo[] = [];
-  for (const line of stdout.split('\n')) {
-    if ((!line.includes('/claude') && !/\bclaude\b/.test(line)) || line.includes('grep') || line.includes('agenttop'))
-      continue;
-    const parts = line.trim().split(/\s+/);
-    const pid = parseInt(parts[1], 10);
-    if (isNaN(pid)) continue;
-    const command = parts.slice(10).join(' ');
-    if (command.startsWith('sudo')) continue;
-    procs.push({
-      pid,
-      cpu: parseFloat(parts[2]) || 0,
-      mem: parseFloat(parts[3]) || 0,
-      memKB: parseInt(parts[5], 10) || 0,
-      startTime: parts[8] || '',
-      command,
-      cwd: '',
-    });
-  }
-
-  // resolve cwd for each process concurrently
-  await Promise.all(
-    procs.map(async (p) => {
-      try {
-        p.cwd = await readlink(`/proc/${p.pid}/cwd`);
-      } catch {
-        // no access or process gone
-      }
-    }),
-  );
-
-  return procs;
-};
+export const normalisePath = (p: string): string => normalize(p).replace(/[\\/]+$/, '');
 
 export const readFirstLinesAsync = async (filePath: string, bytes: number): Promise<string[]> => {
   let fh;
