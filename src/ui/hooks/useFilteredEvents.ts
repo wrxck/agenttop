@@ -1,14 +1,16 @@
 import { useMemo } from 'react';
 
-import type { ToolCall } from '../../discovery/types.js';
+import type { ActivityEvent } from '../../discovery/types.js';
 
-const applyFilter = (events: ToolCall[], filter: string): ToolCall[] => {
+const applyFilter = (events: ActivityEvent[], filter: string): ActivityEvent[] => {
   if (!filter) return events;
   const lower = filter.toLowerCase();
   return events.filter(
-    (e) => e.toolName.toLowerCase().includes(lower) || JSON.stringify(e.toolInput).toLowerCase().includes(lower),
+    (e) =>
+      e.call.toolName.toLowerCase().includes(lower) ||
+      JSON.stringify(e.call.toolInput).toLowerCase().includes(lower),
   );
 };
 
-export const useFilteredEvents = (rawEvents: ToolCall[], filter: string): ToolCall[] =>
+export const useFilteredEvents = (rawEvents: ActivityEvent[], filter: string): ActivityEvent[] =>
   useMemo(() => applyFilter(rawEvents, filter), [rawEvents, filter]);

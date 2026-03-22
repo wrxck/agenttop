@@ -2,11 +2,12 @@ import { watch } from 'chokidar';
 import type { FSWatcher } from 'chokidar';
 
 import { getTaskDirs, getProjectsDirs } from '../config.js';
-import type { ToolCall, SecurityEvent, TokenUsage } from '../discovery/types.js';
+import type { ToolCall, ToolResult, SecurityEvent, TokenUsage } from '../discovery/types.js';
 import { FileTailer } from './tail.js';
-import { parseLines, parseAllEvents, parseUsageFromLines } from './parser.js';
+import { parseLines, parseLinesWithResults, parseAllEvents, parseUsageFromLines } from './parser.js';
 
 export type ToolCallHandler = (calls: ToolCall[]) => void;
+export type ToolResultHandler = (results: ToolResult[]) => void;
 export type SecurityEventHandler = (events: SecurityEvent[]) => void;
 export type UsageHandler = (sessionId: string, usage: TokenUsage) => void;
 
@@ -14,6 +15,7 @@ export class Watcher {
   private watcher: FSWatcher | null = null;
   private tailer = new FileTailer();
   private handler: ToolCallHandler;
+  private resultHandler: ToolResultHandler | null;
   private securityHandler: SecurityEventHandler | null;
   private usageHandler: UsageHandler | null;
   private allUsers: boolean;
@@ -24,11 +26,13 @@ export class Watcher {
     allUsers: boolean,
     securityHandler?: SecurityEventHandler,
     usageHandler?: UsageHandler,
+    resultHandler?: ToolResultHandler,
   ) {
     this.handler = handler;
     this.allUsers = allUsers;
     this.securityHandler = securityHandler ?? null;
     this.usageHandler = usageHandler ?? null;
+    this.resultHandler = resultHandler ?? null;
   }
 
   start(): void {
@@ -46,35 +50,42 @@ export class Watcher {
     this.watcher.on('add', (filePath: string) => {
       if (this.knownFiles.has(filePath)) return;
       this.knownFiles.add(filePath);
-      this.tailer.seekToEnd(filePath);
+      this.tailer.seekToEndAsync(filePath);
     });
 
     this.watcher.on('change', (filePath: string) => {
-      const lines = this.tailer.readNewLines(filePath);
-      if (lines.length === 0) return;
-
-      const calls = parseLines(lines);
-      if (calls.length > 0) {
-        this.handler(calls);
-      }
-
-      if (this.securityHandler) {
-        const allEvents = parseAllEvents(lines);
-        if (allEvents.length > 0) {
-          this.securityHandler(allEvents);
-        }
-      }
-
-      if (this.usageHandler) {
-        const usage = parseUsageFromLines(lines);
-        if (usage.inputTokens > 0 || usage.outputTokens > 0) {
-          const firstCall = calls[0];
-          if (firstCall) {
-            this.usageHandler(firstCall.sessionId, usage);
-          }
-        }
-      }
+      this.handleChange(filePath);
     });
+  }
+
+  private async handleChange(filePath: string): Promise<void> {
+    const lines = await this.tailer.readNewLinesAsync(filePath);
+    if (lines.length === 0) return;
+
+    const { calls, results } = parseLinesWithResults(lines);
+    if (calls.length > 0) {
+      this.handler(calls);
+    }
+    if (this.resultHandler && results.length > 0) {
+      this.resultHandler(results);
+    }
+
+    if (this.securityHandler) {
+      const allEvents = parseAllEvents(lines);
+      if (allEvents.length > 0) {
+        this.securityHandler(allEvents);
+      }
+    }
+
+    if (this.usageHandler) {
+      const usage = parseUsageFromLines(lines);
+      if (usage.inputTokens > 0 || usage.outputTokens > 0) {
+        const firstCall = calls[0];
+        if (firstCall) {
+          this.usageHandler(firstCall.sessionId, usage);
+        }
+      }
+    }
   }
 
   stop(): void {
@@ -82,6 +93,18 @@ export class Watcher {
     this.watcher = null;
     this.tailer.resetAll();
     this.knownFiles.clear();
+  }
+
+  async readExistingAsync(filePath: string): Promise<ToolCall[]> {
+    this.tailer.reset(filePath);
+    const lines = await this.tailer.readNewLinesAsync(filePath);
+    return parseLines(lines);
+  }
+
+  async readExistingWithResultsAsync(filePath: string): Promise<{ calls: ToolCall[]; results: ToolResult[] }> {
+    this.tailer.reset(filePath);
+    const lines = await this.tailer.readNewLinesAsync(filePath);
+    return parseLinesWithResults(lines);
   }
 
   readExisting(filePath: string): ToolCall[] {

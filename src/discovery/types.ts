@@ -33,7 +33,13 @@ export interface ToolCall {
   timestamp: number;
   toolName: string;
   toolInput: Record<string, unknown>;
+  toolUseId?: string;
   cwd: string;
+}
+
+export interface ActivityEvent {
+  call: ToolCall;
+  result?: ToolResult;
 }
 
 export interface ToolResult {

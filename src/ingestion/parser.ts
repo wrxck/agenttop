@@ -40,6 +40,7 @@ export const extractToolCalls = (event: RawEvent): ToolCall[] => {
         timestamp: ts,
         toolName: (toolBlock.name as string) || 'unknown',
         toolInput: (toolBlock.input as Record<string, unknown>) || {},
+        toolUseId: (toolBlock.id as string) || undefined,
         cwd: event.cwd,
       });
     }
@@ -114,6 +115,19 @@ export const parseLines = (lines: string[]): ToolCall[] => {
     }
   }
   return calls;
+};
+
+export const parseLinesWithResults = (lines: string[]): { calls: ToolCall[]; results: ToolResult[] } => {
+  const calls: ToolCall[] = [];
+  const results: ToolResult[] = [];
+  for (const line of lines) {
+    const event = parseLine(line);
+    if (event) {
+      calls.push(...extractToolCalls(event));
+      results.push(...extractToolResults(event));
+    }
+  }
+  return { calls, results };
 };
 
 export const parseAllEvents = (lines: string[]): SecurityEvent[] => {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Text, useApp, useStdout } from 'ink';
 
-import type { CLIOptions } from '../discovery/types.js';
+import type { CLIOptions, ActivityEvent } from '../discovery/types.js';
 import type { Config } from '../config/store.js';
 import {
   setNickname,
@@ -11,6 +11,8 @@ import {
   getArchived,
   purgeExpiredArchives,
   deleteSessionFiles,
+  loadConfig,
+  saveConfig,
 } from '../config/store.js';
 import { resolveTheme } from '../config/themes.js';
 import { installUpdate } from '../updates.js';
@@ -21,6 +23,7 @@ import { AlertBar } from './components/AlertBar.js';
 import { SessionDetail } from './components/SessionDetail.js';
 import { SetupModal } from './components/SetupModal.js';
 import { FooterBar } from './components/FooterBar.js';
+import { ToolCallDetail } from './components/ToolCallDetail.js';
 import { SettingsMenu } from './components/SettingsMenu.js';
 import { ThemeMenu } from './components/ThemeMenu.js';
 import { ThemePickerModal } from './components/ThemePickerModal.js';
@@ -68,8 +71,23 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
     null,
   );
   const [archivedIds, setArchivedIds] = useState<Set<string>>(() => new Set(Object.keys(getArchived())));
+  const [sidebarWidth, setSidebarWidth] = useState(() => initialConfig.sidebarWidth ?? 30);
+  const [selectedEventIndex, setSelectedEventIndex] = useState(0);
+  const [showEventDetail, setShowEventDetail] = useState(false);
 
   const refreshArchived = useCallback(() => setArchivedIds(new Set(Object.keys(getArchived()))), []);
+
+  const persistSidebarWidth = useCallback((v: number | ((w: number) => number)) => {
+    setSidebarWidth((prev) => {
+      const next = typeof v === 'function' ? v(prev) : v;
+      if (next !== prev) {
+        const cfg = loadConfig();
+        cfg.sidebarWidth = next;
+        saveConfig(cfg);
+      }
+      return next;
+    });
+  }, []);
   const updateInfo = useUpdateChecker(
     options.noUpdates,
     setup.liveConfig.updates.checkOnLaunch,
@@ -134,7 +152,30 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
   }, []);
   useEffect(() => {
     setActivityScroll(0);
+    setSelectedEventIndex(0);
+    setShowEventDetail(false);
   }, [selectedSession?.sessionId, selectedGroup?.key]);
+
+  // auto-scroll activity viewport to keep cursor visible
+  useEffect(() => {
+    const totalEvents = events.length;
+    const vRows = (termHeight - 3 - (options.noSecurity ? 0 : 6) - 1 - (inputMode !== 'normal' ? 1 : 0)) - 2;
+    if (vRows <= 0 || totalEvents === 0) return;
+    const start = Math.max(0, totalEvents - vRows - activityScroll);
+    const end = start + vRows;
+    if (selectedEventIndex < start) {
+      setActivityScroll(totalEvents - vRows - selectedEventIndex);
+    } else if (selectedEventIndex >= end) {
+      setActivityScroll(totalEvents - vRows - (selectedEventIndex - vRows + 1));
+    }
+  }, [selectedEventIndex, events.length]);
+
+  // clamp selected index when events shrink
+  useEffect(() => {
+    if (events.length > 0 && selectedEventIndex >= events.length) {
+      setSelectedEventIndex(events.length - 1);
+    }
+  }, [events.length]);
 
   const alertHeight = options.noSecurity ? 0 : 6;
   const mainHeight = termHeight - 3 - alertHeight - 1 - (inputMode !== 'normal' ? 1 : 0);
@@ -164,6 +205,7 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
     showSetup: setup.showSetup,
     showSettings: setup.showSettings || setup.showThemeMenu || setup.showThemePicker || setup.showTour,
     showDetail,
+    showEventDetail,
     leftShowDetail: split.leftShowDetail,
     rightShowDetail: split.rightShowDetail,
     confirmAction,
@@ -184,6 +226,8 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
     maxScroll: Math.max(0, events.length - viewportRows),
     leftMaxScroll: Math.max(0, leftEvents.length - viewportRows),
     rightMaxScroll: Math.max(0, rightEvents.length - viewportRows),
+    activityEventCount: events.length,
+    selectedEventIndex,
     exit,
     selectNext,
     selectPrev,
@@ -209,8 +253,11 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
     setLeftScroll: split.setLeftScroll,
     setRightScroll: split.setRightScroll,
     setActivityScroll,
+    setSelectedEventIndex,
+    setShowEventDetail,
     setConfirmAction,
     setUpdateStatus,
+    setSidebarWidth: persistSidebarWidth,
     nicknameInput,
     filterInput,
     onNickname: (id) => {
@@ -313,6 +360,8 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
   const activitySlug = selectedGroup ? selectedGroup.key : (selectedSession?.slug ?? null);
   const isMerged = selectedGroup !== null;
 
+  const selectedEvent: ActivityEvent | undefined = events[selectedEventIndex];
+
   const rightPanel = split.splitMode ? (
     <SplitPanel
       activePanel={activePanel}
@@ -328,6 +377,8 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
       rightShowDetail={split.rightShowDetail}
       height={mainHeight}
     />
+  ) : showEventDetail && selectedEvent ? (
+    <ToolCallDetail event={selectedEvent} focused={activePanel === 'activity'} height={mainHeight} />
   ) : showDetail && selectedSession ? (
     <SessionDetail session={selectedSession} focused={activePanel === 'activity'} height={mainHeight} />
   ) : (
@@ -342,6 +393,7 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
       filter={activityFilter || undefined}
       merged={isMerged}
       mergedSessions={selectedGroup?.sessions}
+      selectedEventIndex={selectedEventIndex}
     />
   );
 
@@ -357,6 +409,7 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
           filter={filter || undefined}
           viewingArchive={viewingArchive}
           totalSessions={sessions.length}
+          sidebarWidth={sidebarWidth}
         />
         {rightPanel}
       </Box>

@@ -22,6 +22,7 @@ export interface KeyHandlerDeps {
   showSetup: boolean;
   showSettings: boolean;
   showDetail: boolean;
+  showEventDetail: boolean;
   leftShowDetail: boolean;
   rightShowDetail: boolean;
   confirmAction: unknown;
@@ -41,6 +42,8 @@ export interface KeyHandlerDeps {
   maxScroll: number;
   leftMaxScroll: number;
   rightMaxScroll: number;
+  activityEventCount: number;
+  selectedEventIndex: number;
   updateInfo: { available: boolean; latest?: string } | null;
 
   exit: () => void;
@@ -69,8 +72,11 @@ export interface KeyHandlerDeps {
   setLeftScroll: (v: number | ((s: number) => number)) => void;
   setRightScroll: (v: number | ((s: number) => number)) => void;
   setActivityScroll: (v: number | ((s: number) => number)) => void;
+  setSelectedEventIndex: (v: number | ((i: number) => number)) => void;
+  setShowEventDetail: (v: boolean) => void;
   setConfirmAction: (v: { title: string; message: string; onConfirm: () => void } | null) => void;
   setUpdateStatus: (v: string) => void;
+  setSidebarWidth: (v: number | ((w: number) => number)) => void;
 
   nicknameInput: TextInputState;
   filterInput: TextInputState;
@@ -109,6 +115,11 @@ export const useKeyHandler = (deps: KeyHandlerDeps): void => {
 
     if (matchKey(d.kb.quit, input, key)) {
       d.exit();
+      return;
+    }
+
+    if (d.showEventDetail) {
+      if (key.escape || key.return || key.leftArrow) d.setShowEventDetail(false);
       return;
     }
 
@@ -283,14 +294,33 @@ export const useKeyHandler = (deps: KeyHandlerDeps): void => {
     }
 
     if (d.activePanel === 'sessions') {
+      if (matchKey(d.kb.sidebarWider, input, key)) {
+        d.setSidebarWidth((w) => Math.min(w + 5, 60));
+        return;
+      }
+      if (matchKey(d.kb.sidebarNarrower, input, key)) {
+        d.setSidebarWidth((w) => Math.max(w - 5, 20));
+        return;
+      }
       if (matchKey(d.kb.navDown, input, key) || key.downArrow) d.selectNext();
       if (matchKey(d.kb.navUp, input, key) || key.upArrow) d.selectPrev();
     }
     if (d.activePanel === 'activity') {
-      if (matchKey(d.kb.navUp, input, key) || key.upArrow) d.setActivityScroll((s) => Math.min(s + 1, d.maxScroll));
-      if (matchKey(d.kb.navDown, input, key) || key.downArrow) d.setActivityScroll((s) => Math.max(s - 1, 0));
-      if (matchKey(d.kb.scrollBottom, input, key)) d.setActivityScroll(0);
-      if (matchKey(d.kb.scrollTop, input, key)) d.setActivityScroll(d.maxScroll);
+      if (matchKey(d.kb.navDown, input, key) || key.downArrow) {
+        d.setSelectedEventIndex((i) => Math.min(i + 1, d.activityEventCount - 1));
+      }
+      if (matchKey(d.kb.navUp, input, key) || key.upArrow) {
+        d.setSelectedEventIndex((i) => Math.max(i - 1, 0));
+      }
+      if (matchKey(d.kb.scrollBottom, input, key)) {
+        d.setSelectedEventIndex(d.activityEventCount - 1);
+      }
+      if (matchKey(d.kb.scrollTop, input, key)) {
+        d.setSelectedEventIndex(0);
+      }
+      if (matchKey(d.kb.detail, input, key) && d.activityEventCount > 0) {
+        d.setShowEventDetail(true);
+      }
     }
     if (d.activePanel === 'left') {
       if (matchKey(d.kb.navUp, input, key) || key.upArrow) d.setLeftScroll((s) => Math.min(s + 1, d.leftMaxScroll));

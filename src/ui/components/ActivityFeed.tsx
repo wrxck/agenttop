@@ -1,11 +1,11 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 
-import type { ToolCall, Session } from '../../discovery/types.js';
+import type { ActivityEvent, Session } from '../../discovery/types.js';
 import { colors, getToolColor } from '../theme.js';
 
 interface ActivityFeedProps {
-  events: ToolCall[];
+  events: ActivityEvent[];
   sessionSlug: string | null;
   sessionId?: string;
   isActive?: boolean;
@@ -15,6 +15,7 @@ interface ActivityFeedProps {
   filter?: string;
   merged?: boolean;
   mergedSessions?: Session[];
+  selectedEventIndex?: number;
 }
 
 const TAG_COLORS = ['#61AFEF', '#98C379', '#C678DD', '#E5C07B', '#E06C75', '#56B6C2', '#D19A66', '#BE5046'];
@@ -24,7 +25,7 @@ const formatTime = (ts: number): string => {
   return d.toLocaleTimeString('en-GB', { hour12: false });
 };
 
-const summarizeInput = (call: ToolCall): string => {
+const summarizeInput = (call: ActivityEvent['call']): string => {
   const input = call.toolInput;
 
   switch (call.toolName) {
@@ -52,7 +53,19 @@ const summarizeInput = (call: ToolCall): string => {
 };
 
 export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
-  ({ events, sessionSlug, sessionId, isActive, focused, height, scrollOffset, filter, merged, mergedSessions }) => {
+  ({
+    events,
+    sessionSlug,
+    sessionId,
+    isActive,
+    focused,
+    height,
+    scrollOffset,
+    filter,
+    merged,
+    mergedSessions,
+    selectedEventIndex,
+  }) => {
     const viewportRows = height - 2;
     const totalEvents = events.length;
     const start = Math.max(0, totalEvents - viewportRows - scrollOffset);
@@ -69,6 +82,8 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
         slugColorMap.set(s.sessionId, TAG_COLORS[i % TAG_COLORS.length]);
       });
     }
+
+    const hasSelection = focused && selectedEventIndex !== undefined;
 
     return (
       <Box
@@ -88,11 +103,14 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
               <Text color={colors.muted}> [{filter.length > 10 ? filter.slice(0, 9) + '\u2026' : filter}]</Text>
             )}
           </Box>
-          {focused && canScroll && !isAtBottom && (
-            <Text color={colors.muted}>
-              [{totalEvents - end + viewportRows}/{totalEvents}]
-            </Text>
-          )}
+          <Box>
+            {hasSelection && <Text color={colors.muted}>enter:detail </Text>}
+            {focused && canScroll && !isAtBottom && (
+              <Text color={colors.muted}>
+                [{totalEvents - end + viewportRows}/{totalEvents}]
+              </Text>
+            )}
+          </Box>
         </Box>
 
         {visible.length === 0 && (
@@ -104,17 +122,26 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
         )}
 
         {visible.map((event, i) => {
-          const tag = merged ? event.slug.slice(0, 4) : null;
-          const tagColor = merged ? slugColorMap.get(event.sessionId) || colors.muted : undefined;
+          const call = event.call;
+          const globalIndex = start + i;
+          const isSelected = hasSelection && globalIndex === selectedEventIndex;
+          const tag = merged ? call.slug.slice(0, 4) : null;
+          const tagColor = merged ? slugColorMap.get(call.sessionId) || colors.muted : undefined;
 
           return (
-            <Box key={`${event.timestamp}-${i}`} paddingX={1}>
+            <Box key={`${call.timestamp}-${i}`} paddingX={1}>
               {tag && <Text color={tagColor}>{tag.padEnd(5)}</Text>}
-              <Text color={colors.muted}>{formatTime(event.timestamp)} </Text>
-              <Text color={getToolColor(event.toolName)} bold>
-                {event.toolName.padEnd(8)}
+              <Text color={isSelected ? colors.bright : colors.muted} underline={isSelected}>
+                {formatTime(call.timestamp)}
               </Text>
-              <Text color={colors.text}> {summarizeInput(event)}</Text>
+              <Text> </Text>
+              <Text color={getToolColor(call.toolName)} bold underline={isSelected}>
+                {call.toolName.padEnd(8)}
+              </Text>
+              <Text color={isSelected ? colors.bright : colors.text} underline={isSelected}>
+                {' '}
+                {summarizeInput(call)}
+              </Text>
             </Box>
           );
         })}

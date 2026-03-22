@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box } from 'ink';
 
-import type { ToolCall } from '../../discovery/types.js';
+import type { ActivityEvent } from '../../discovery/types.js';
 import type { Session } from '../../discovery/types.js';
 import type { Panel } from '../App.js';
 import { colors } from '../theme.js';
@@ -12,8 +12,8 @@ interface SplitPanelProps {
   activePanel: Panel;
   leftSession: Session | null;
   rightSession: Session | null;
-  leftEvents: ToolCall[];
-  rightEvents: ToolCall[];
+  leftEvents: ActivityEvent[];
+  rightEvents: ActivityEvent[];
   leftScroll: number;
   rightScroll: number;
   leftFilter: string;
