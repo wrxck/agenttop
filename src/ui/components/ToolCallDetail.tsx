@@ -5,6 +5,119 @@ import type { ActivityEvent } from '../../discovery/types.js';
 import { colors, getToolColor } from '../theme.js';
 import { formatTime } from '../format.js';
 
+// lightweight JSON syntax highlighting using theme colours
+// returns an array of {text, color} segments for a single line
+interface Segment {
+  text: string;
+  color: string;
+}
+
+const highlightJsonLine = (line: string): Segment[] => {
+  const segments: Segment[] = [];
+  let i = 0;
+  const len = line.length;
+
+  while (i < len) {
+    const ch = line[i];
+
+    // whitespace
+    if (ch === ' ' || ch === '\t') {
+      let end = i;
+      while (end < len && (line[end] === ' ' || line[end] === '\t')) end++;
+      segments.push({ text: line.slice(i, end), color: colors.text });
+      i = end;
+      continue;
+    }
+
+    // braces, brackets, commas, colons — punctuation
+    if (ch === '{' || ch === '}' || ch === '[' || ch === ']' || ch === ',' || ch === ':') {
+      segments.push({ text: ch, color: colors.muted });
+      i++;
+      continue;
+    }
+
+    // strings
+    if (ch === '"') {
+      let end = i + 1;
+      while (end < len && line[end] !== '"') {
+        if (line[end] === '\\') end++; // skip escaped char
+        end++;
+      }
+      end++; // closing quote
+      const str = line.slice(i, end);
+
+      // check if this is a key (followed by optional whitespace then colon)
+      let peek = end;
+      while (peek < len && line[peek] === ' ') peek++;
+      const isKey = peek < len && line[peek] === ':';
+
+      segments.push({ text: str, color: isKey ? colors.primary : colors.secondary });
+      i = end;
+      continue;
+    }
+
+    // numbers
+    if ((ch >= '0' && ch <= '9') || ch === '-') {
+      let end = i + 1;
+      while (
+        end < len &&
+        ((line[end] >= '0' && line[end] <= '9') ||
+          line[end] === '.' ||
+          line[end] === 'e' ||
+          line[end] === 'E' ||
+          line[end] === '+' ||
+          line[end] === '-')
+      )
+        end++;
+      segments.push({ text: line.slice(i, end), color: colors.warning });
+      i = end;
+      continue;
+    }
+
+    // true, false, null
+    if (line.startsWith('true', i)) {
+      segments.push({ text: 'true', color: colors.accent });
+      i += 4;
+      continue;
+    }
+    if (line.startsWith('false', i)) {
+      segments.push({ text: 'false', color: colors.accent });
+      i += 5;
+      continue;
+    }
+    if (line.startsWith('null', i)) {
+      segments.push({ text: 'null', color: colors.error });
+      i += 4;
+      continue;
+    }
+
+    // fallback — single char
+    segments.push({ text: ch, color: colors.text });
+    i++;
+  }
+
+  return segments;
+};
+
+// detect if a line looks like JSON content (part of a JSON block)
+const isJsonLine = (line: string): boolean => {
+  const trimmed = line.trimStart();
+  return (
+    trimmed.startsWith('{') ||
+    trimmed.startsWith('}') ||
+    trimmed.startsWith('[') ||
+    trimmed.startsWith(']') ||
+    trimmed.startsWith('"') ||
+    /^\d/.test(trimmed) ||
+    trimmed === 'true' ||
+    trimmed === 'true,' ||
+    trimmed === 'false' ||
+    trimmed === 'false,' ||
+    trimmed === 'null' ||
+    trimmed === 'null,'
+  );
+};
+
 interface ToolCallDetailProps {
   event: ActivityEvent;
   focused: boolean;
@@ -129,7 +242,7 @@ const renderWebSearch = (event: ActivityEvent): string[] => {
 const renderDefault = (event: ActivityEvent): string[] => {
   const lines: string[] = [];
   lines.push('--- input ---');
-  lines.push(JSON.stringify(event.call.toolInput, null, 2));
+  lines.push(...JSON.stringify(event.call.toolInput, null, 2).split('\n'));
   if (event.result) {
     lines.push('');
     lines.push('--- result ---');
@@ -205,15 +318,61 @@ export const ToolCallDetail: React.FC<ToolCallDetailProps> = React.memo(({ event
 
       <Box flexDirection="column" paddingX={1}>
         {visible.map((line, i) => {
-          let lineColor = colors.text;
-          if (line.startsWith('- ') && event.call.toolName === 'Edit') lineColor = colors.error;
-          else if (line.startsWith('+ ') && event.call.toolName === 'Edit') lineColor = colors.secondary;
-          else if (line.startsWith('$ ')) lineColor = colors.bright;
-          else if (line.startsWith('---')) lineColor = colors.muted;
-          else if (event.result?.isError) lineColor = colors.error;
-
+          // diff colouring for Edit
+          if (line.startsWith('- ') && event.call.toolName === 'Edit') {
+            return (
+              <Text key={`${start + i}`} color={colors.error} wrap="truncate">
+                {line}
+              </Text>
+            );
+          }
+          if (line.startsWith('+ ') && event.call.toolName === 'Edit') {
+            return (
+              <Text key={`${start + i}`} color={colors.secondary} wrap="truncate">
+                {line}
+              </Text>
+            );
+          }
+          // shell commands
+          if (line.startsWith('$ ')) {
+            return (
+              <Text key={`${start + i}`} color={colors.bright} wrap="truncate">
+                {line}
+              </Text>
+            );
+          }
+          // section headers
+          if (line.startsWith('---')) {
+            return (
+              <Text key={`${start + i}`} color={colors.muted} wrap="truncate">
+                {line}
+              </Text>
+            );
+          }
+          // error output
+          if (event.result?.isError) {
+            return (
+              <Text key={`${start + i}`} color={colors.error} wrap="truncate">
+                {line}
+              </Text>
+            );
+          }
+          // JSON syntax highlighting
+          if (isJsonLine(line)) {
+            const segments = highlightJsonLine(line);
+            return (
+              <Text key={`${start + i}`} wrap="truncate">
+                {segments.map((seg, si) => (
+                  <Text key={si} color={seg.color}>
+                    {seg.text}
+                  </Text>
+                ))}
+              </Text>
+            );
+          }
+          // default
           return (
-            <Text key={`${start + i}`} color={lineColor} wrap="truncate">
+            <Text key={`${start + i}`} color={colors.text} wrap="truncate">
               {line}
             </Text>
           );
