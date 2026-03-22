@@ -81,6 +81,7 @@ export interface ProcessInfo {
   memKB: number;
   command: string;
   startTime: string;
+  cwd: string;
 }
 
 export interface CLIOptions {
