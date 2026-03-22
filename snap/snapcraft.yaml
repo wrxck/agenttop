@@ -1,0 +1,21 @@
+name: agenttop
+version: git
+summary: Real-time terminal dashboard for monitoring AI coding agent sessions
+description: |
+  Like htop for agents. Monitor Claude Code sessions with real-time activity feeds,
+  token usage tracking, security alerts, and session management.
+base: core22
+confinement: classic
+grade: stable
+
+apps:
+  agenttop:
+    command: bin/agenttop
+    environment:
+      NODE_PATH: $SNAP/lib/node_modules
+
+parts:
+  agenttop:
+    plugin: npm
+    npm-node-version: '20.11.0'
+    source: .
