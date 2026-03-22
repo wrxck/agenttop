@@ -1,5 +1,6 @@
 import type { ToolCall, ToolResult, SecurityEvent, Alert, AlertSeverity } from '../discovery/types.js';
 import { isToolCall } from '../discovery/types.js';
+import type { SecurityRulesConfig } from '../config/store.js';
 
 import { checkNetwork } from './rules/network.js';
 import { checkExfiltration } from './rules/exfiltration.js';
@@ -10,16 +11,19 @@ import { checkInjection } from './rules/injection.js';
 type ToolCallRule = (call: ToolCall) => Alert | null;
 type SecurityEventRule = (event: SecurityEvent) => Alert | null;
 
-const toolCallRules: ToolCallRule[] = [
-  checkNetwork,
-  checkExfiltration,
-  checkSensitiveFiles,
-  checkShellEscape,
+interface NamedRule<T> {
+  key: keyof SecurityRulesConfig;
+  fn: T;
+}
+
+const toolCallRules: NamedRule<ToolCallRule>[] = [
+  { key: 'network', fn: checkNetwork },
+  { key: 'exfiltration', fn: checkExfiltration },
+  { key: 'sensitiveFiles', fn: checkSensitiveFiles },
+  { key: 'shellEscape', fn: checkShellEscape },
 ];
 
-const allEventRules: SecurityEventRule[] = [
-  checkInjection,
-];
+const allEventRules: NamedRule<SecurityEventRule>[] = [{ key: 'injection', fn: checkInjection }];
 
 const SEVERITY_ORDER: Record<AlertSeverity, number> = {
   info: 0,
@@ -33,9 +37,17 @@ const DEDUP_WINDOW_MS = 30_000;
 export class SecurityEngine {
   private recentAlerts = new Map<string, number>();
   private minLevel: AlertSeverity;
+  private rulesConfig: SecurityRulesConfig;
 
-  constructor(minLevel: AlertSeverity = 'warn') {
+  constructor(minLevel: AlertSeverity = 'warn', rulesConfig?: SecurityRulesConfig) {
     this.minLevel = minLevel;
+    this.rulesConfig = rulesConfig ?? {
+      network: true,
+      exfiltration: true,
+      sensitiveFiles: true,
+      shellEscape: true,
+      injection: true,
+    };
   }
 
   analyze(call: ToolCall): Alert[] {
@@ -51,13 +63,15 @@ export class SecurityEngine {
 
     if (isToolCall(event)) {
       for (const rule of toolCallRules) {
-        const alert = rule(event);
+        if (!this.rulesConfig[rule.key]) continue;
+        const alert = rule.fn(event);
         if (alert) alerts.push(alert);
       }
     }
 
     for (const rule of allEventRules) {
-      const alert = rule(event);
+      if (!this.rulesConfig[rule.key]) continue;
+      const alert = rule.fn(event);
       if (alert) alerts.push(alert);
     }
 

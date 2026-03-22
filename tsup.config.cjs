@@ -1,5 +1,5 @@
 module.exports = {
-  entry: ['src/index.tsx'],
+  entry: ['src/index.tsx', 'src/mcp-server.ts'],
   format: ['esm'],
   target: 'node18',
   outDir: 'dist',
