@@ -12,21 +12,23 @@ export const useUpdateChecker = (
 
   useEffect(() => {
     if (disabled || !checkOnLaunch) return;
-    try {
-      const i = checkForUpdate();
-      if (i.available) setUpdateInfo(i);
-    } catch {
-      /* */
-    }
-    const iv = setInterval(() => {
-      try {
-        const i = checkForUpdate();
-        if (i.available) setUpdateInfo(i);
-      } catch {
-        /* */
-      }
-    }, checkInterval);
-    return () => clearInterval(iv);
+
+    let cancelled = false;
+
+    const check = () => {
+      checkForUpdate()
+        .then((i) => {
+          if (!cancelled && i.available) setUpdateInfo(i);
+        })
+        .catch(() => {});
+    };
+
+    check();
+    const iv = setInterval(check, checkInterval);
+    return () => {
+      cancelled = true;
+      clearInterval(iv);
+    };
   }, []);
 
   return updateInfo;

@@ -1,13 +1,13 @@
-import { execSync, exec } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { execFile, exec } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const getPackageVersion = (): string => {
+const getPackageVersion = async (): Promise<string> => {
   try {
     const thisFile = fileURLToPath(import.meta.url);
     const pkgPath = join(dirname(thisFile), '..', 'package.json');
-    const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+    const pkg = JSON.parse(await readFile(pkgPath, 'utf-8'));
     return pkg.version || '0.0.0';
   } catch {
     return '0.0.0';
@@ -20,19 +20,23 @@ export interface UpdateInfo {
   available: boolean;
 }
 
-export const checkForUpdate = (): UpdateInfo => {
-  const current = getPackageVersion();
-  try {
-    const latest = execSync('npm view agenttop version', { encoding: 'utf-8', timeout: 5000 }).trim();
-    return {
-      current,
-      latest,
-      available: latest !== current && compareVersions(latest, current) > 0,
-    };
-  } catch {
-    return { current, latest: current, available: false };
-  }
-};
+export const checkForUpdate = (): Promise<UpdateInfo> =>
+  new Promise((resolve) => {
+    getPackageVersion().then((current) => {
+      execFile('npm', ['view', 'agenttop', 'version'], { encoding: 'utf-8', timeout: 5000 }, (err, stdout) => {
+        if (err || !stdout) {
+          resolve({ current, latest: current, available: false });
+          return;
+        }
+        const latest = stdout.trim();
+        resolve({
+          current,
+          latest,
+          available: latest !== current && compareVersions(latest, current) > 0,
+        });
+      });
+    });
+  });
 
 export const installUpdate = (): Promise<string> => {
   return new Promise((resolve, reject) => {

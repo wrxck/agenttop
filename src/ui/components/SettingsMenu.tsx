@@ -43,6 +43,8 @@ const KEYBIND_LABELS: Record<keyof KeybindingsConfig, string> = {
   pinRight: 'Pin to right panel',
   swapPanels: 'Swap panels',
   closePanel: 'Close panel',
+  sidebarNarrower: 'Sidebar narrower',
+  sidebarWider: 'Sidebar wider',
 };
 
 const RULE_LABELS: Record<keyof SecurityRulesConfig, string> = {
@@ -75,6 +77,8 @@ const DEFAULT_KEYBINDINGS: KeybindingsConfig = {
   pinRight: '2',
   swapPanels: 'S',
   closePanel: 'X',
+  sidebarNarrower: '<',
+  sidebarWider: '>',
 };
 
 const SEVERITY_OPTIONS: NotificationsConfig['minSeverity'][] = ['info', 'warn', 'high', 'critical'];

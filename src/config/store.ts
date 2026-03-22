@@ -57,6 +57,8 @@ export interface KeybindingsConfig {
   pinRight: string;
   swapPanels: string;
   closePanel: string;
+  sidebarNarrower: string;
+  sidebarWider: string;
 }
 
 export interface Config {
@@ -76,6 +78,7 @@ export interface Config {
   prompts: PromptsConfig;
   archived: Record<string, number>;
   archiveExpiryDays: number;
+  sidebarWidth: number;
   theme: string;
   customThemes: Record<string, { name: string; colors: ThemeColors; toolColors: ToolColors }>;
 }
@@ -128,6 +131,8 @@ const defaultConfig = (): Config => ({
     pinRight: '2',
     swapPanels: 'S',
     closePanel: 'X',
+    sidebarNarrower: '<',
+    sidebarWider: '>',
   },
   security: {
     enabled: true,
@@ -147,6 +152,7 @@ const defaultConfig = (): Config => ({
   },
   archived: {},
   archiveExpiryDays: 0,
+  sidebarWidth: 30,
   theme: 'one-dark',
   customThemes: {},
 });

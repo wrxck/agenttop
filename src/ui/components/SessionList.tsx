@@ -12,6 +12,7 @@ interface SessionListProps {
   filter?: string;
   viewingArchive?: boolean;
   totalSessions: number;
+  sidebarWidth?: number;
 }
 
 const formatModel = (model: string): string => {
@@ -29,12 +30,26 @@ const formatTokens = (n: number): string => {
 
 const truncate = (s: string, max: number): string => (s.length > max ? s.slice(0, max - 1) + '\u2026' : s);
 
-const SIDEBAR_WIDTH = 30;
-const INNER_WIDTH = SIDEBAR_WIDTH - 4;
+const getDisplayName = (s: { nickname?: string; cwd: string; project: string; slug: string }): string => {
+  if (s.nickname) return s.nickname;
+  if (s.cwd) {
+    const parts = s.cwd.replace(/\/+$/, '').split('/');
+    return parts[parts.length - 1] || s.slug;
+  }
+  if (s.project) {
+    const parts = s.project.replace(/\/+$/, '').split('/');
+    return parts[parts.length - 1] || s.slug;
+  }
+  return s.slug;
+};
+
+const DEFAULT_SIDEBAR_WIDTH = 30;
 const LINES_PER_ITEM = 3;
 
 export const SessionList: React.FC<SessionListProps> = React.memo(
-  ({ visibleItems, selectedIndex, focused, height, filter, viewingArchive, totalSessions }) => {
+  ({ visibleItems, selectedIndex, focused, height, filter, viewingArchive, totalSessions, sidebarWidth }) => {
+    const SIDEBAR_WIDTH = sidebarWidth ?? DEFAULT_SIDEBAR_WIDTH;
+    const INNER_WIDTH = SIDEBAR_WIDTH - 4;
     const availableRows = height - 2;
     const maxVisible = Math.max(1, Math.floor((availableRows + 1) / LINES_PER_ITEM));
     const halfView = Math.floor(maxVisible / 2);
@@ -94,10 +109,10 @@ export const SessionList: React.FC<SessionListProps> = React.memo(
                 paddingX={1}
                 backgroundColor={isSelected ? colors.selected : undefined}
               >
-                <Text color={nameColor} bold={isSelected} wrap="truncate">
+                <Text color={nameColor} bold={isSelected} underline={isSelected} wrap="truncate">
                   {arrow} <Text color={dotColor}>{statusDot}</Text> {label}
                 </Text>
-                <Text color={colors.muted} wrap="truncate">
+                <Text color={isSelected ? colors.text : colors.muted} wrap="truncate">
                   {'    '}
                   {model} {formatTokens(g.totalInputTokens)}in {formatTokens(g.totalOutputTokens)}out
                 </Text>
@@ -115,7 +130,7 @@ export const SessionList: React.FC<SessionListProps> = React.memo(
 
           if (item.type === 'session') {
             const nameColor = isSelected ? colors.bright : isActive ? colors.secondary : colors.muted;
-            const displayName = truncate(session.slug, INNER_WIDTH - 6);
+            const displayName = truncate(session.nickname || session.slug, INNER_WIDTH - 6);
             return (
               <Box
                 key={session.sessionId}
@@ -123,10 +138,10 @@ export const SessionList: React.FC<SessionListProps> = React.memo(
                 paddingX={1}
                 backgroundColor={isSelected ? colors.selected : undefined}
               >
-                <Text color={nameColor} bold={isSelected} wrap="truncate">
+                <Text color={nameColor} bold={isSelected} underline={isSelected} wrap="truncate">
                   {'  '} <Text color={dotColor}>{statusDot}</Text> {displayName}
                 </Text>
-                <Text color={colors.muted} wrap="truncate">
+                <Text color={isSelected ? colors.text : colors.muted} wrap="truncate">
                   {'      '}
                   {model} {formatTokens(totalIn)}in {formatTokens(session.usage.outputTokens)}out
                 </Text>
@@ -138,18 +153,6 @@ export const SessionList: React.FC<SessionListProps> = React.memo(
           // ungrouped
           const indicator = isSelected ? '\u25b8' : ' ';
           const nameColor = isSelected ? colors.bright : isActive ? colors.secondary : colors.text;
-          const getDisplayName = (s: typeof session): string => {
-            if (s.nickname) return s.nickname;
-            if (s.cwd) {
-              const parts = s.cwd.replace(/\/+$/, '').split('/');
-              return parts[parts.length - 1] || s.slug;
-            }
-            if (s.project) {
-              const parts = s.project.replace(/\/+$/, '').split('/');
-              return parts[parts.length - 1] || s.slug;
-            }
-            return s.slug;
-          };
           const displayName = truncate(getDisplayName(session), INNER_WIDTH - 4);
 
           return (
@@ -159,10 +162,10 @@ export const SessionList: React.FC<SessionListProps> = React.memo(
               paddingX={1}
               backgroundColor={isSelected ? colors.selected : undefined}
             >
-              <Text color={nameColor} bold={isSelected} wrap="truncate">
+              <Text color={nameColor} bold={isSelected} underline={isSelected} wrap="truncate">
                 {indicator} <Text color={dotColor}>{statusDot}</Text> {displayName}
               </Text>
-              <Text color={colors.muted} wrap="truncate">
+              <Text color={isSelected ? colors.text : colors.muted} wrap="truncate">
                 {'    '}
                 {model} {formatTokens(totalIn)}in {formatTokens(session.usage.outputTokens)}out
               </Text>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
-import { discoverSessions } from '../../discovery/sessions.js';
+import { getCachedSessions, subscribe, triggerRefresh } from '../../discovery/sessionsAsync.js';
 import type { Session, TokenUsage, SessionGroup, VisibleItem } from '../../discovery/types.js';
 import { getNicknames } from '../../config/store.js';
 
@@ -8,7 +8,6 @@ const ACTIVE_POLL_MS = 10_000;
 const IDLE_POLL_MS = 30_000;
 
 const getGroupKey = (session: Session): string => {
-  // use cwd basename as canonical key; fall back to project basename then slug
   if (session.cwd) {
     const parts = session.cwd.replace(/\/+$/, '').split('/');
     return parts[parts.length - 1] || session.slug;
@@ -68,6 +67,55 @@ const buildVisibleItems = (groups: SessionGroup[]): VisibleItem[] => {
   return items;
 };
 
+const enrichAndFilter = (
+  found: Session[],
+  usageOverrides: Map<string, TokenUsage>,
+  filter: string | undefined,
+  archivedIds: Set<string> | undefined,
+  viewingArchive: boolean | undefined,
+): Session[] => {
+  const nicknames = getNicknames();
+
+  let enriched = found.map((s) => {
+    const override = usageOverrides.get(s.sessionId);
+    return {
+      ...s,
+      nickname: nicknames[s.sessionId],
+      usage: override
+        ? {
+            inputTokens: s.usage.inputTokens + override.inputTokens,
+            cacheCreationTokens: s.usage.cacheCreationTokens + override.cacheCreationTokens,
+            cacheReadTokens: s.usage.cacheReadTokens + override.cacheReadTokens,
+            outputTokens: s.usage.outputTokens + override.outputTokens,
+          }
+        : s.usage,
+    };
+  });
+
+  if (archivedIds && archivedIds.size > 0) {
+    if (viewingArchive) {
+      enriched = enriched.filter((s) => archivedIds.has(s.sessionId));
+    } else {
+      enriched = enriched.filter((s) => !archivedIds.has(s.sessionId));
+    }
+  } else if (viewingArchive) {
+    enriched = [];
+  }
+
+  if (filter) {
+    const lower = filter.toLowerCase();
+    enriched = enriched.filter(
+      (s) =>
+        s.slug.toLowerCase().includes(lower) ||
+        s.nickname?.toLowerCase().includes(lower) ||
+        s.project.toLowerCase().includes(lower) ||
+        s.model.toLowerCase().includes(lower),
+    );
+  }
+
+  return enriched;
+};
+
 export const useSessions = (
   allUsers: boolean,
   filter?: string,
@@ -80,55 +128,27 @@ export const useSessions = (
   const usageOverrides = useRef(new Map<string, TokenUsage>());
 
   const refresh = useCallback(() => {
-    const found = discoverSessions(allUsers);
-    const nicknames = getNicknames();
-
-    const enriched = found.map((s) => {
-      const override = usageOverrides.current.get(s.sessionId);
-      return {
-        ...s,
-        nickname: nicknames[s.sessionId],
-        usage: override
-          ? {
-              inputTokens: s.usage.inputTokens + override.inputTokens,
-              cacheCreationTokens: s.usage.cacheCreationTokens + override.cacheCreationTokens,
-              cacheReadTokens: s.usage.cacheReadTokens + override.cacheReadTokens,
-              outputTokens: s.usage.outputTokens + override.outputTokens,
-            }
-          : s.usage,
-      };
-    });
-
-    let filtered = enriched;
-
-    if (archivedIds && archivedIds.size > 0) {
-      if (viewingArchive) {
-        filtered = filtered.filter((s) => archivedIds.has(s.sessionId));
-      } else {
-        filtered = filtered.filter((s) => !archivedIds.has(s.sessionId));
-      }
-    } else if (viewingArchive) {
-      filtered = [];
-    }
-
-    if (filter) {
-      const lower = filter.toLowerCase();
-      filtered = filtered.filter(
-        (s) =>
-          s.slug.toLowerCase().includes(lower) ||
-          s.nickname?.toLowerCase().includes(lower) ||
-          s.project.toLowerCase().includes(lower) ||
-          s.model.toLowerCase().includes(lower),
-      );
-    }
-
+    const found = getCachedSessions();
+    const filtered = enrichAndFilter(found, usageOverrides.current, filter, archivedIds, viewingArchive);
     setSessions(filtered);
+    triggerRefresh(allUsers);
   }, [allUsers, filter, archivedIds, viewingArchive]);
 
   useEffect(() => {
+    // subscribe to cache updates from background refresh
+    const unsubscribe = subscribe(() => {
+      const found = getCachedSessions();
+      const filtered = enrichAndFilter(found, usageOverrides.current, filter, archivedIds, viewingArchive);
+      setSessions(filtered);
+    });
+    return unsubscribe;
+  }, [filter, archivedIds, viewingArchive]);
+
+  useEffect(() => {
+    // initial load + kick off first background refresh
     refresh();
     const pollMs = sessions.length > 0 ? ACTIVE_POLL_MS : IDLE_POLL_MS;
-    const interval = setInterval(refresh, pollMs);
+    const interval = setInterval(() => triggerRefresh(allUsers), pollMs);
     return () => clearInterval(interval);
   }, [refresh, sessions.length > 0]);
 
