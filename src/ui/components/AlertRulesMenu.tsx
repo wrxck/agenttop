@@ -492,7 +492,7 @@ export const AlertRulesMenu: React.FC<AlertRulesMenuProps> = React.memo(({ confi
                 )}
                 <Box>
                   <Text color={isSelected ? colors.primary : colors.text}>
-                    {isSelected ? '> ' : '  '} {label} {'.' .repeat(Math.max(2, 28 - label.length))}{' '}
+                    {isSelected ? '> ' : '  '} {label} {'.'.repeat(Math.max(2, 28 - label.length))}{' '}
                   </Text>
                   <Text color={enabled ? colors.secondary : colors.error}>{enabled ? 'ON' : 'OFF'}</Text>
                 </Box>

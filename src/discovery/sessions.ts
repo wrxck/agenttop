@@ -54,7 +54,9 @@ const detectStatus = (filePath: string, hasPid: boolean, lastActivity: number, s
           if (!hasToolUse) return 'waiting';
         }
       }
-    } catch { /* malformed */ }
+    } catch {
+      /* malformed */
+    }
   }
   if (Date.now() - lastActivity > staleTimeout * 1000) return 'stale';
   return 'active';
@@ -135,7 +137,13 @@ const extractSessionMeta = (
   return { sessionId, cwd, version, gitBranch, model, usage };
 };
 
-const discoverFromProjects = (allUsers: boolean, processes: ProcessInfo[], sessionMap: Map<string, Session>, staleTimeout: number, pinnedOrder: string[]): void => {
+const discoverFromProjects = (
+  allUsers: boolean,
+  processes: ProcessInfo[],
+  sessionMap: Map<string, Session>,
+  staleTimeout: number,
+  pinnedOrder: string[],
+): void => {
   const projectsDirs = getProjectsDirs(allUsers);
 
   for (const projectsDir of projectsDirs) {
@@ -206,7 +214,13 @@ const discoverFromProjects = (allUsers: boolean, processes: ProcessInfo[], sessi
   }
 };
 
-const discoverFromTmp = (allUsers: boolean, processes: ProcessInfo[], sessionMap: Map<string, Session>, staleTimeout: number, pinnedOrder: string[]): void => {
+const discoverFromTmp = (
+  allUsers: boolean,
+  processes: ProcessInfo[],
+  sessionMap: Map<string, Session>,
+  staleTimeout: number,
+  pinnedOrder: string[],
+): void => {
   const taskDirs = getTaskDirs(allUsers);
 
   for (const taskDir of taskDirs) {
@@ -313,7 +327,11 @@ const discoverFromTmp = (allUsers: boolean, processes: ProcessInfo[], sessionMap
         const matchingProcess = processes.find((p) => p.cwd && normalisePath(p.cwd) === normCwd);
 
         const latestFile = outputFiles.reduce((a, b) => {
-          try { return statSync(a).mtimeMs > statSync(b).mtimeMs ? a : b; } catch { return a; }
+          try {
+            return statSync(a).mtimeMs > statSync(b).mtimeMs ? a : b;
+          } catch {
+            return a;
+          }
         });
 
         const session: Session = {

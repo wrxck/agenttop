@@ -31,7 +31,12 @@ export const readTailBytesAsync = async (filePath: string, bytes: number): Promi
   }
 };
 
-const detectStatusAsync = async (filePath: string, hasPid: boolean, lastActivity: number, staleTimeout: number): Promise<SessionStatus> => {
+const detectStatusAsync = async (
+  filePath: string,
+  hasPid: boolean,
+  lastActivity: number,
+  staleTimeout: number,
+): Promise<SessionStatus> => {
   if (!hasPid) return 'inactive';
   const tail = await readTailBytesAsync(filePath, 4096);
   const lines = tail.split('\n').filter(Boolean);
@@ -49,7 +54,9 @@ const detectStatusAsync = async (filePath: string, hasPid: boolean, lastActivity
           if (!hasToolUse) return 'waiting';
         }
       }
-    } catch { /* malformed */ }
+    } catch {
+      /* malformed */
+    }
   }
   if (Date.now() - lastActivity > staleTimeout * 1000) return 'stale';
   return 'active';
@@ -251,7 +258,9 @@ const discoverFromTmpAsync = async (
         for (const f of outputFiles) {
           try {
             if ((await stat(f)).mtimeMs > (await stat(latestFile)).mtimeMs) latestFile = f;
-          } catch { /* keep current */ }
+          } catch {
+            /* keep current */
+          }
         }
 
         const session: Session = {

@@ -275,7 +275,8 @@ export const ThemeMenu: React.FC<ThemeMenuProps> = React.memo(({ config, onClose
 
         <Box paddingX={1} marginTop={1}>
           <Text color={colors.muted} dimColor italic wrap="truncate">
-            Some themes were inspired by pop culture. Names have been changed to protect the innocent (and our legal team).
+            Some themes were inspired by pop culture. Names have been changed to protect the innocent (and our legal
+            team).
           </Text>
         </Box>
       </Box>

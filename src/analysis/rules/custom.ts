@@ -9,7 +9,11 @@ export const createCustomRules = (rules: CustomAlertRule[]): SecurityEventRule[]
   for (const rule of rules) {
     if (!rule.enabled) continue;
     let regex: RegExp;
-    try { regex = new RegExp(rule.pattern); } catch { continue; }
+    try {
+      regex = new RegExp(rule.pattern);
+    } catch {
+      continue;
+    }
 
     const fn: SecurityEventRule = (event: SecurityEvent): Alert | null => {
       let matched = false;

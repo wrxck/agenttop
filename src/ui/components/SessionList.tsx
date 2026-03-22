@@ -85,14 +85,17 @@ export const SessionList: React.FC<SessionListProps> = React.memo(
           if (item.type === 'group') {
             const g = item.group;
             const arrow = g.expanded ? '\u25be' : '\u25b8';
-            const dotColor = g.status === 'waiting' ? colors.waiting
-              : g.status === 'stale' ? colors.stale
-              : g.status === 'active' ? colors.success
-              : colors.muted;
+            const dotColor =
+              g.status === 'waiting'
+                ? colors.waiting
+                : g.status === 'stale'
+                  ? colors.stale
+                  : g.status === 'active'
+                    ? colors.success
+                    : colors.muted;
             const statusDot = g.status === 'inactive' ? '\u25cb' : '\u25cf';
-            const nameColor = isSelected ? colors.bright
-              : g.status !== 'inactive' ? colors.secondary : colors.text;
-            const groupPinned = g.sessions.some(s => s.pinned);
+            const nameColor = isSelected ? colors.bright : g.status !== 'inactive' ? colors.secondary : colors.text;
+            const groupPinned = g.sessions.some((s) => s.pinned);
             const pinMarker = groupPinned ? '* ' : '  ';
             const statusTag = g.status === 'waiting' ? ' [waiting]' : g.status === 'stale' ? ' [stale]' : '';
             const label = truncate(`${g.key} (${g.sessions.length})${statusTag}`, INNER_WIDTH - 4);
@@ -106,7 +109,8 @@ export const SessionList: React.FC<SessionListProps> = React.memo(
                 backgroundColor={isSelected ? colors.selected : undefined}
               >
                 <Text color={nameColor} bold={isSelected} underline={isSelected} wrap="truncate">
-                  {arrow} <Text color={dotColor}>{statusDot}</Text> {pinMarker}{label}
+                  {arrow} <Text color={dotColor}>{statusDot}</Text> {pinMarker}
+                  {label}
                 </Text>
                 <Text color={isSelected ? colors.text : colors.muted} wrap="truncate">
                   {'    '}
@@ -118,10 +122,14 @@ export const SessionList: React.FC<SessionListProps> = React.memo(
           }
 
           const session = item.type === 'session' ? item.session : item.session;
-          const dotColor = session.status === 'waiting' ? colors.waiting
-            : session.status === 'stale' ? colors.stale
-            : session.status === 'active' ? colors.success
-            : colors.muted;
+          const dotColor =
+            session.status === 'waiting'
+              ? colors.waiting
+              : session.status === 'stale'
+                ? colors.stale
+                : session.status === 'active'
+                  ? colors.success
+                  : colors.muted;
           const statusDot = session.status === 'inactive' ? '\u25cb' : '\u25cf';
           const pinMarker = session.pinned ? '* ' : '  ';
           const statusTag = session.status === 'waiting' ? ' [waiting]' : session.status === 'stale' ? ' [stale]' : '';
@@ -129,7 +137,11 @@ export const SessionList: React.FC<SessionListProps> = React.memo(
           const model = formatModel(session.model);
 
           if (item.type === 'session') {
-            const nameColor = isSelected ? colors.bright : session.status !== 'inactive' ? colors.secondary : colors.muted;
+            const nameColor = isSelected
+              ? colors.bright
+              : session.status !== 'inactive'
+                ? colors.secondary
+                : colors.muted;
             const displayName = truncate(`${session.nickname || session.slug}${statusTag}`, INNER_WIDTH - 6);
             return (
               <Box
@@ -139,7 +151,8 @@ export const SessionList: React.FC<SessionListProps> = React.memo(
                 backgroundColor={isSelected ? colors.selected : undefined}
               >
                 <Text color={nameColor} bold={isSelected} underline={isSelected} wrap="truncate">
-                  {'  '} <Text color={dotColor}>{statusDot}</Text> {pinMarker}{displayName}
+                  {'  '} <Text color={dotColor}>{statusDot}</Text> {pinMarker}
+                  {displayName}
                 </Text>
                 <Text color={isSelected ? colors.text : colors.muted} wrap="truncate">
                   {'      '}
@@ -163,7 +176,8 @@ export const SessionList: React.FC<SessionListProps> = React.memo(
               backgroundColor={isSelected ? colors.selected : undefined}
             >
               <Text color={nameColor} bold={isSelected} underline={isSelected} wrap="truncate">
-                {indicator} <Text color={dotColor}>{statusDot}</Text> {pinMarker}{displayName}
+                {indicator} <Text color={dotColor}>{statusDot}</Text> {pinMarker}
+                {displayName}
               </Text>
               <Text color={isSelected ? colors.text : colors.muted} wrap="truncate">
                 {'    '}

@@ -53,7 +53,10 @@ describe('status derivation', () => {
     // detectStatus returns 'inactive' immediately when hasPid is false
     // We verify the pattern: no pid means inactive
     const filePath = join(testDir, 'inactive.jsonl');
-    writeFileSync(filePath, JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Bash' }] } }) + '\n');
+    writeFileSync(
+      filePath,
+      JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Bash' }] } }) + '\n',
+    );
     const tail = readTailBytes(filePath, 4096);
     const lines = tail.split('\n').filter(Boolean);
     const lastEvent = JSON.parse(lines[lines.length - 1]);

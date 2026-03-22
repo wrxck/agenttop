@@ -237,7 +237,8 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
     splitMode: split.splitMode,
     inputMode,
     showSetup: setup.showSetup,
-    showSettings: setup.showSettings || setup.showThemeMenu || setup.showThemePicker || setup.showTour || showAlertRules,
+    showSettings:
+      setup.showSettings || setup.showThemeMenu || setup.showThemePicker || setup.showTour || showAlertRules,
     showDetail,
     showEventDetail,
     leftShowDetail: split.leftShowDetail,

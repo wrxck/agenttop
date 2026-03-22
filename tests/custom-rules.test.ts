@@ -3,13 +3,24 @@ import { createCustomRules } from '../src/analysis/rules/custom.js';
 import type { ToolCall, ToolResult } from '../src/discovery/types.js';
 
 const makeCall = (toolName: string, toolInput: Record<string, unknown>): ToolCall => ({
-  sessionId: 'test-session', agentId: 'test-agent', slug: 'test-slug',
-  timestamp: Date.now(), toolName, toolInput, cwd: '/tmp',
+  sessionId: 'test-session',
+  agentId: 'test-agent',
+  slug: 'test-slug',
+  timestamp: Date.now(),
+  toolName,
+  toolInput,
+  cwd: '/tmp',
 });
 
 const makeResult = (content: string): ToolResult => ({
-  sessionId: 'test-session', agentId: 'test-agent', slug: 'test-slug',
-  timestamp: Date.now(), toolUseId: 'tool-1', content, isError: false, cwd: '/tmp',
+  sessionId: 'test-session',
+  agentId: 'test-agent',
+  slug: 'test-slug',
+  timestamp: Date.now(),
+  toolUseId: 'tool-1',
+  content,
+  isError: false,
+  cwd: '/tmp',
 });
 
 describe('custom rules', () => {
@@ -32,21 +43,42 @@ describe('custom rules', () => {
 
   it('matches tool output', () => {
     const rules = createCustomRules([
-      { name: 'secret', pattern: 'API_KEY', match: 'output', severity: 'critical', message: 'secret found', enabled: true },
+      {
+        name: 'secret',
+        pattern: 'API_KEY',
+        match: 'output',
+        severity: 'critical',
+        message: 'secret found',
+        enabled: true,
+      },
     ]);
     expect(rules[0](makeResult('found API_KEY=abc123'))).not.toBeNull();
   });
 
   it('does not match tool call when match is output', () => {
     const rules = createCustomRules([
-      { name: 'secret', pattern: 'API_KEY', match: 'output', severity: 'critical', message: 'secret found', enabled: true },
+      {
+        name: 'secret',
+        pattern: 'API_KEY',
+        match: 'output',
+        severity: 'critical',
+        message: 'secret found',
+        enabled: true,
+      },
     ]);
     expect(rules[0](makeCall('Bash', { command: 'echo API_KEY' }))).toBeNull();
   });
 
   it('matches toolName', () => {
     const rules = createCustomRules([
-      { name: 'no-write', pattern: 'Write', match: 'toolName', severity: 'warn', message: 'write detected', enabled: true },
+      {
+        name: 'no-write',
+        pattern: 'Write',
+        match: 'toolName',
+        severity: 'warn',
+        message: 'write detected',
+        enabled: true,
+      },
     ]);
     expect(rules[0](makeCall('Write', { file_path: '/tmp/x' }))).not.toBeNull();
   });
