@@ -26,6 +26,7 @@ import { FooterBar } from './components/FooterBar.js';
 import { ToolCallDetail } from './components/ToolCallDetail.js';
 import { SettingsMenu } from './components/SettingsMenu.js';
 import { ThemeMenu } from './components/ThemeMenu.js';
+import { AlertRulesMenu } from './components/AlertRulesMenu.js';
 import { ThemePickerModal } from './components/ThemePickerModal.js';
 import { GuidedTour } from './components/GuidedTour.js';
 import { ConfirmModal } from './components/ConfirmModal.js';
@@ -76,6 +77,7 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
   const [selectedEventIndex, setSelectedEventIndex] = useState(0);
   const [showEventDetail, setShowEventDetail] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showAlertRules, setShowAlertRules] = useState(false);
 
   const refreshArchived = useCallback(() => setArchivedIds(new Set(Object.keys(getArchived()))), []);
 
@@ -211,7 +213,7 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
     splitMode: split.splitMode,
     inputMode,
     showSetup: setup.showSetup,
-    showSettings: setup.showSettings || setup.showThemeMenu || setup.showThemePicker || setup.showTour,
+    showSettings: setup.showSettings || setup.showThemeMenu || setup.showThemePicker || setup.showTour || showAlertRules,
     showDetail,
     showEventDetail,
     leftShowDetail: split.leftShowDetail,
@@ -255,6 +257,8 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
     setLeftShowDetail: split.setLeftShowDetail,
     setRightShowDetail: split.setRightShowDetail,
     setShowSettings: setup.setShowSettings,
+    showAlertRules,
+    setShowAlertRules,
     setViewingArchive,
     setSplitMode: split.setSplitMode,
     setLeftSession: split.setLeftSession,
@@ -344,6 +348,17 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
     );
   if (setup.showTour) return <GuidedTour onComplete={setup.handleTourComplete} onSkip={setup.handleTourSkip} />;
   if (setup.showThemeMenu) return <ThemeMenu config={setup.liveConfig} onClose={setup.handleThemeMenuClose} />;
+  if (showAlertRules)
+    return (
+      <AlertRulesMenu
+        config={setup.liveConfig}
+        onClose={() => setShowAlertRules(false)}
+        onSave={(newConfig) => {
+          saveConfig(newConfig);
+          setup.setLiveConfig(newConfig);
+        }}
+      />
+    );
   if (setup.showSettings)
     return (
       <SettingsMenu

@@ -66,6 +66,8 @@ export interface KeyHandlerDeps {
   setLeftShowDetail: (v: boolean | ((d: boolean) => boolean)) => void;
   setRightShowDetail: (v: boolean | ((d: boolean) => boolean)) => void;
   setShowSettings: (v: boolean) => void;
+  showAlertRules: boolean;
+  setShowAlertRules: (v: boolean) => void;
   setViewingArchive: (v: boolean | ((v: boolean) => boolean)) => void;
   setSplitMode: (v: boolean) => void;
   setLeftSession: (v: Session | null) => void;
@@ -273,6 +275,10 @@ export const useKeyHandler = (deps: KeyHandlerDeps): void => {
     }
     if (matchKey(d.kb.settings, input, key)) {
       d.setShowSettings(true);
+      return;
+    }
+    if (matchKey(d.kb.alertRules, input, key)) {
+      d.setShowAlertRules(true);
       return;
     }
     if (matchKey(d.kb.viewArchive, input, key)) {
