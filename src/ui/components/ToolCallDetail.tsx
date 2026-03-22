@@ -204,6 +204,8 @@ export const ToolCallDetail: React.FC<ToolCallDetailProps> = React.memo(({ event
     <Box
       flexDirection="column"
       flexGrow={1}
+      flexShrink={1}
+      overflow="hidden"
       borderStyle="single"
       borderColor={focused ? colors.primary : colors.border}
     >
