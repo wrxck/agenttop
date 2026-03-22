@@ -38,6 +38,9 @@ export const FooterBar: React.FC<FooterBarProps> = React.memo(({ keybindings, up
     <Box marginRight={2}>
       <Text color="#5C6370">{label(keybindings.detail)}:detail</Text>
     </Box>
+    <Box marginRight={2}>
+      <Text color="#5C6370">{label(keybindings.settings)}:settings</Text>
+    </Box>
     {updateStatus && (
       <Box marginRight={2}>
         <Text color={colors.secondary}>{updateStatus}</Text>

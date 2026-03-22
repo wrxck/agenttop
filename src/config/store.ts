@@ -44,6 +44,7 @@ export interface KeybindingsConfig {
   clearNickname: string;
   detail: string;
   update: string;
+  settings: string;
 }
 
 export interface Config {
@@ -102,6 +103,7 @@ const defaultConfig = (): Config => ({
     clearNickname: 'N',
     detail: 'enter',
     update: 'u',
+    settings: 's',
   },
   security: {
     enabled: true,

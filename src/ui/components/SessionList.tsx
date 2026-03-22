@@ -18,10 +18,10 @@ const formatModel = (model: string): string => {
   return model.slice(0, 8);
 };
 
-const formatProject = (project: string): string => {
+const formatProject = (project: string, max: number): string => {
   const parts = project.split('/');
   const last = parts[parts.length - 1] || project;
-  return last.length > 18 ? last.slice(0, 17) + '\u2026' : last;
+  return last.length > max ? last.slice(0, max - 1) + '\u2026' : last;
 };
 
 const formatTokens = (n: number): string => {
@@ -30,20 +30,31 @@ const formatTokens = (n: number): string => {
   return String(n);
 };
 
+const truncate = (s: string, max: number): string => (s.length > max ? s.slice(0, max - 1) + '\u2026' : s);
+
+const SIDEBAR_WIDTH = 28;
+const INNER_WIDTH = SIDEBAR_WIDTH - 4; // borders + paddingX
+
 export const SessionList: React.FC<SessionListProps> = React.memo(({ sessions, selectedIndex, focused, filter }) => {
   return (
-    <Box flexDirection="column" width={28} borderStyle="single" borderColor={focused ? colors.primary : colors.border}>
+    <Box
+      flexDirection="column"
+      width={SIDEBAR_WIDTH}
+      borderStyle="single"
+      borderColor={focused ? colors.primary : colors.border}
+      overflow="hidden"
+    >
       <Box paddingX={1}>
         <Text color={colors.header} bold>
           SESSIONS
         </Text>
-        {filter && <Text color={colors.muted}> [{filter}]</Text>}
+        {filter && <Text color={colors.muted}> [{truncate(filter, 10)}]</Text>}
       </Box>
 
       {sessions.length === 0 && (
         <Box paddingX={1} paddingY={1}>
           <Text color={colors.muted} italic>
-            {filter ? 'No matching sessions' : 'No active sessions'}
+            {filter ? 'No matches' : 'No sessions'}
           </Text>
         </Box>
       )}
@@ -51,8 +62,11 @@ export const SessionList: React.FC<SessionListProps> = React.memo(({ sessions, s
       {sessions.map((session, i) => {
         const isSelected = i === selectedIndex;
         const indicator = isSelected ? '>' : ' ';
-        const displayName = session.nickname || session.slug;
+        const nameMaxLen = INNER_WIDTH - 2; // indicator + space
+        const displayName = truncate(session.nickname || session.slug, nameMaxLen);
         const totalIn = session.usage.inputTokens + session.usage.cacheReadTokens;
+        const proj = formatProject(session.project, 12);
+        const model = formatModel(session.model);
 
         return (
           <Box key={session.sessionId} flexDirection="column" paddingX={1} paddingY={0}>
@@ -60,25 +74,23 @@ export const SessionList: React.FC<SessionListProps> = React.memo(({ sessions, s
               color={isSelected ? colors.bright : colors.text}
               bold={isSelected}
               backgroundColor={isSelected ? colors.selected : undefined}
+              wrap="truncate"
             >
               {indicator} {displayName}
             </Text>
             {session.nickname && (
-              <Text color={colors.muted}>
+              <Text color={colors.muted} wrap="truncate">
                 {'  '}
-                {session.slug}
+                {truncate(session.slug, nameMaxLen)}
               </Text>
             )}
-            <Text color={colors.muted}>
+            <Text color={colors.muted} wrap="truncate">
               {'  '}
-              {formatProject(session.project)} | {formatModel(session.model)}
+              {proj} {model} {session.agentCount}ag
             </Text>
-            <Text color={colors.muted}>
-              {'  '}CPU {session.cpu}% | {session.memMB}MB | {session.agentCount} ag
-            </Text>
-            <Text color={colors.muted}>
+            <Text color={colors.muted} wrap="truncate">
               {'  '}
-              {formatTokens(totalIn)} in | {formatTokens(session.usage.outputTokens)} out
+              {formatTokens(totalIn)}in {formatTokens(session.usage.outputTokens)}out {session.cpu}%
             </Text>
           </Box>
         );
