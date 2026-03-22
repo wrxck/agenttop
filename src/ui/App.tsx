@@ -464,6 +464,7 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
           sessions={sessions}
           selectedIndex={selectedIndex}
           focused={activePanel === 'sessions'}
+          height={mainHeight}
           filter={filter || undefined}
           viewingArchive={viewingArchive}
         />
