@@ -1,6 +1,6 @@
 {
   "name": "agenttop",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "description": "Real-time terminal dashboard for monitoring AI coding agent sessions — like htop for agents",
   "type": "module",
   "bin": {
