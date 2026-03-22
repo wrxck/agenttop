@@ -10,7 +10,10 @@ export const useActivityStream = (session: Session | Session[] | null, allUsers:
   const watcherRef = useRef<Watcher | null>(null);
 
   const sessions = session === null ? [] : Array.isArray(session) ? session : [session];
-  const sessionKey = sessions.map((s) => s.sessionId).sort().join(',');
+  const sessionKey = sessions
+    .map((s) => s.sessionId)
+    .sort()
+    .join(',');
   const sessionIdSet = new Set(sessions.map((s) => s.sessionId));
 
   useEffect(() => {

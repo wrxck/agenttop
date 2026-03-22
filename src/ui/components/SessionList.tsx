@@ -63,9 +63,7 @@ export const SessionList: React.FC<SessionListProps> = React.memo(
               {selectedIndex + 1}/{visibleItems.length}
             </Text>
           )}
-          {!canScroll && totalSessions > 0 && (
-            <Text color={colors.muted}>{totalSessions}</Text>
-          )}
+          {!canScroll && totalSessions > 0 && <Text color={colors.muted}>{totalSessions}</Text>}
         </Box>
 
         {visibleItems.length === 0 && (

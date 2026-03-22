@@ -17,10 +17,7 @@ interface ActivityFeedProps {
   mergedSessions?: Session[];
 }
 
-const TAG_COLORS = [
-  '#61AFEF', '#98C379', '#C678DD', '#E5C07B', '#E06C75',
-  '#56B6C2', '#D19A66', '#BE5046',
-];
+const TAG_COLORS = ['#61AFEF', '#98C379', '#C678DD', '#E5C07B', '#E06C75', '#56B6C2', '#D19A66', '#BE5046'];
 
 const formatTime = (ts: number): string => {
   const d = new Date(ts);
@@ -108,13 +105,11 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
 
         {visible.map((event, i) => {
           const tag = merged ? event.slug.slice(0, 4) : null;
-          const tagColor = merged ? (slugColorMap.get(event.sessionId) || colors.muted) : undefined;
+          const tagColor = merged ? slugColorMap.get(event.sessionId) || colors.muted : undefined;
 
           return (
             <Box key={`${event.timestamp}-${i}`} paddingX={1}>
-              {tag && (
-                <Text color={tagColor}>{tag.padEnd(5)}</Text>
-              )}
+              {tag && <Text color={tagColor}>{tag.padEnd(5)}</Text>}
               <Text color={colors.muted}>{formatTime(event.timestamp)} </Text>
               <Text color={getToolColor(event.toolName)} bold>
                 {event.toolName.padEnd(8)}

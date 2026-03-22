@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 import { discoverSessions } from '../../discovery/sessions.js';
 import type { Session, TokenUsage, SessionGroup, VisibleItem } from '../../discovery/types.js';
@@ -20,22 +20,35 @@ const getDisplayName = (session: Session): string => {
   return session.slug;
 };
 
+const getGroupKey = (session: Session): string => {
+  // use cwd basename as canonical key; fall back to project basename then slug
+  if (session.cwd) {
+    const parts = session.cwd.replace(/\/+$/, '').split('/');
+    return parts[parts.length - 1] || session.slug;
+  }
+  if (session.project) {
+    const parts = session.project.replace(/\/+$/, '').split('/');
+    return parts[parts.length - 1] || session.slug;
+  }
+  return session.slug;
+};
+
 const buildGroups = (sessions: Session[], expandedKeys: Set<string>): SessionGroup[] => {
-  const byName = new Map<string, Session[]>();
+  const byKey = new Map<string, { displayName: string; sessions: Session[] }>();
   for (const s of sessions) {
-    const name = getDisplayName(s);
-    const list = byName.get(name);
-    if (list) list.push(s);
-    else byName.set(name, [s]);
+    const key = getGroupKey(s);
+    const existing = byKey.get(key);
+    if (existing) {
+      existing.sessions.push(s);
+    } else {
+      byKey.set(key, { displayName: getDisplayName(s), sessions: [s] });
+    }
   }
 
   const groups: SessionGroup[] = [];
-  for (const [key, list] of byName) {
+  for (const [key, { displayName, sessions: list }] of byKey) {
     list.sort((a, b) => b.lastActivity - a.lastActivity);
-    const totalIn = list.reduce(
-      (sum, s) => sum + s.usage.inputTokens + s.usage.cacheReadTokens,
-      0,
-    );
+    const totalIn = list.reduce((sum, s) => sum + s.usage.inputTokens + s.usage.cacheReadTokens, 0);
     const totalOut = list.reduce((sum, s) => sum + s.usage.outputTokens, 0);
     groups.push({
       key,
@@ -135,8 +148,10 @@ export const useSessions = (
     return () => clearInterval(interval);
   }, [refresh, sessions.length > 0]);
 
-  const groups = buildGroups(sessions, expandedKeys);
-  const visibleItems = buildVisibleItems(groups);
+  const groups = useMemo(() => buildGroups(sessions, expandedKeys), [sessions, expandedKeys]);
+  const visibleItems = useMemo(() => buildVisibleItems(groups), [groups]);
+  const itemCountRef = useRef(visibleItems.length);
+  itemCountRef.current = visibleItems.length;
 
   const selectedItem = visibleItems[selectedIndex] ?? null;
   const selectedSession =
@@ -145,12 +160,11 @@ export const useSessions = (
       : selectedItem?.type === 'session'
         ? selectedItem.session
         : null;
-  const selectedGroup =
-    selectedItem?.type === 'group' ? selectedItem.group : null;
+  const selectedGroup = selectedItem?.type === 'group' ? selectedItem.group : null;
 
   const selectNext = useCallback(() => {
-    setSelectedIndex((i) => Math.min(i + 1, Math.max(0, visibleItems.length - 1)));
-  }, [visibleItems.length]);
+    setSelectedIndex((i) => Math.min(i + 1, Math.max(0, itemCountRef.current - 1)));
+  }, []);
 
   const selectPrev = useCallback(() => {
     setSelectedIndex((i) => Math.max(i - 1, 0));
