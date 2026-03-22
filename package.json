@@ -1,10 +1,10 @@
 {
   "name": "agenttop",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Real-time terminal dashboard for monitoring AI coding agent sessions — like htop for agents",
   "type": "module",
   "bin": {
-    "agenttop": "./dist/index.js"
+    "agenttop": "dist/index.js"
   },
   "files": [
     "dist",
@@ -27,9 +27,6 @@
   ],
   "author": "Matt Hesketh <matt@heskethwebdesign.co.uk>",
   "license": "MIT",
-  "engines": {
-    "node": "18.0.0"
-  },
   "dependencies": {
     "chokidar": "4.0.3",
     "ink": "6.0.0",
