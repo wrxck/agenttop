@@ -7,19 +7,6 @@ import { getNicknames } from '../../config/store.js';
 const ACTIVE_POLL_MS = 10_000;
 const IDLE_POLL_MS = 30_000;
 
-const getDisplayName = (session: Session): string => {
-  if (session.nickname) return session.nickname;
-  if (session.cwd) {
-    const parts = session.cwd.replace(/\/+$/, '').split('/');
-    return parts[parts.length - 1] || session.slug;
-  }
-  if (session.project) {
-    const parts = session.project.replace(/\/+$/, '').split('/');
-    return parts[parts.length - 1] || session.slug;
-  }
-  return session.slug;
-};
-
 const getGroupKey = (session: Session): string => {
   // use cwd basename as canonical key; fall back to project basename then slug
   if (session.cwd) {
@@ -34,19 +21,16 @@ const getGroupKey = (session: Session): string => {
 };
 
 const buildGroups = (sessions: Session[], expandedKeys: Set<string>): SessionGroup[] => {
-  const byKey = new Map<string, { displayName: string; sessions: Session[] }>();
+  const byKey = new Map<string, Session[]>();
   for (const s of sessions) {
     const key = getGroupKey(s);
     const existing = byKey.get(key);
-    if (existing) {
-      existing.sessions.push(s);
-    } else {
-      byKey.set(key, { displayName: getDisplayName(s), sessions: [s] });
-    }
+    if (existing) existing.push(s);
+    else byKey.set(key, [s]);
   }
 
   const groups: SessionGroup[] = [];
-  for (const [key, { displayName, sessions: list }] of byKey) {
+  for (const [key, list] of byKey) {
     list.sort((a, b) => b.lastActivity - a.lastActivity);
     const totalIn = list.reduce((sum, s) => sum + s.usage.inputTokens + s.usage.cacheReadTokens, 0);
     const totalOut = list.reduce((sum, s) => sum + s.usage.outputTokens, 0);
