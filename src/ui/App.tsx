@@ -449,6 +449,8 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
     <ActivityFeed
       events={events}
       sessionSlug={selectedSession?.slug ?? null}
+      sessionId={selectedSession?.sessionId}
+      isActive={selectedSession ? selectedSession.pid !== null : undefined}
       focused={activePanel === 'activity'}
       height={mainHeight}
       scrollOffset={activityScroll}
