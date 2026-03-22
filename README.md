@@ -12,6 +12,7 @@ Currently supports [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
 - [Security rules](#security-rules)
 - [How it works](#how-it-works)
 - [Multi-user support](#multi-user-support)
+- [Contributing](#contributing)
 - [Trademark notice](#trademark-notice)
 - [License](#license)
 
@@ -126,6 +127,10 @@ Two runtime dependencies: [ink](https://github.com/vadimdemedes/ink) (React-base
 
 - **Non-root** — monitors your own sessions only
 - **Root** — use `--all-users` to monitor all users' sessions on the machine
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code standards, and PR guidelines.
 
 ## Trademark notice
 
