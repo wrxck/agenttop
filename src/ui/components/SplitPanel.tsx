@@ -4,6 +4,7 @@ import { Box } from 'ink';
 import type { ToolCall } from '../../discovery/types.js';
 import type { Session } from '../../discovery/types.js';
 import type { Panel } from '../App.js';
+import { colors } from '../theme.js';
 import { ActivityFeed } from './ActivityFeed.js';
 import { SessionDetail } from './SessionDetail.js';
 
@@ -67,7 +68,17 @@ export const SplitPanel: React.FC<SplitPanelProps> = React.memo(
 
     return (
       <Box flexDirection="row" flexGrow={1}>
-        {left}
+        <Box
+          flexGrow={1}
+          borderStyle="single"
+          borderRight
+          borderTop={false}
+          borderBottom={false}
+          borderLeft={false}
+          borderColor={colors.border}
+        >
+          {left}
+        </Box>
         {right}
       </Box>
     );

@@ -26,6 +26,8 @@ import { SetupModal } from './components/SetupModal.js';
 import { FooterBar } from './components/FooterBar.js';
 import { SettingsMenu } from './components/SettingsMenu.js';
 import { ThemeMenu } from './components/ThemeMenu.js';
+import { ThemePickerModal } from './components/ThemePickerModal.js';
+import { GuidedTour } from './components/GuidedTour.js';
 import { ConfirmModal } from './components/ConfirmModal.js';
 import { SplitPanel } from './components/SplitPanel.js';
 import { useSessions } from './hooks/useSessions.js';
@@ -57,6 +59,8 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
   const [activityScroll, setActivityScroll] = useState(0);
   const [inputMode, setInputMode] = useState<'normal' | 'nickname' | 'filter'>('normal');
   const [showSetup, setShowSetup] = useState(firstRun);
+  const [showThemePicker, setShowThemePicker] = useState(false);
+  const [showTour, setShowTour] = useState(false);
   const [filter, setFilter] = useState('');
   const [activityFilter, setActivityFilter] = useState('');
   const [updateStatus, setUpdateStatus] = useState('');
@@ -179,9 +183,43 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
       } else if (mc === 'dismiss') nc.prompts.mcp = 'dismissed';
       saveConfig(nc);
       setShowSetup(false);
+      if (nc.prompts.theme === 'pending') setShowThemePicker(true);
+      else if (nc.prompts.tour === 'pending') setShowTour(true);
     },
     [liveConfig],
   );
+
+  const handleThemePickerSelect = useCallback(
+    (themeName: string) => {
+      const nc = { ...liveConfig, theme: themeName, prompts: { ...liveConfig.prompts, theme: 'done' as const } };
+      setLiveConfig(nc);
+      saveConfig(nc);
+      setShowThemePicker(false);
+      if (nc.prompts.tour === 'pending') setShowTour(true);
+    },
+    [liveConfig],
+  );
+  const handleThemePickerSkip = useCallback(() => {
+    setShowThemePicker(false);
+    if (liveConfig.prompts.tour === 'pending') setShowTour(true);
+  }, [liveConfig]);
+  const handleThemePickerDismiss = useCallback(() => {
+    const nc = { ...liveConfig, prompts: { ...liveConfig.prompts, theme: 'dismissed' as const } };
+    setLiveConfig(nc);
+    saveConfig(nc);
+    setShowThemePicker(false);
+    if (nc.prompts.tour === 'pending') setShowTour(true);
+  }, [liveConfig]);
+
+  const handleTourComplete = useCallback(() => {
+    const nc = { ...liveConfig, prompts: { ...liveConfig.prompts, tour: 'done' as const } };
+    setLiveConfig(nc);
+    saveConfig(nc);
+    setShowTour(false);
+  }, [liveConfig]);
+  const handleTourSkip = useCallback(() => {
+    setShowTour(false);
+  }, []);
 
   const switchPanel = useCallback(
     (dir: 'next' | 'prev') => {
@@ -239,7 +277,7 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
     splitMode,
     inputMode,
     showSetup,
-    showSettings: showSettings || showThemeMenu,
+    showSettings: showSettings || showThemeMenu || showThemePicker || showTour,
     showDetail,
     leftShowDetail,
     rightShowDetail,
@@ -350,10 +388,22 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
     ];
     if (steps.length === 0) {
       setShowSetup(false);
+      if (liveConfig.prompts.theme === 'pending') setShowThemePicker(true);
+      else if (liveConfig.prompts.tour === 'pending') setShowTour(true);
       return null;
     }
     return <SetupModal steps={steps} onComplete={handleSetupComplete} />;
   }
+  if (showThemePicker) {
+    return (
+      <ThemePickerModal
+        onSelect={handleThemePickerSelect}
+        onSkip={handleThemePickerSkip}
+        onDismiss={handleThemePickerDismiss}
+      />
+    );
+  }
+  if (showTour) return <GuidedTour onComplete={handleTourComplete} onSkip={handleTourSkip} />;
   if (showThemeMenu) return <ThemeMenu config={liveConfig} onClose={handleThemeMenuClose} />;
   if (showSettings)
     return <SettingsMenu config={liveConfig} onClose={handleSettingsClose} onOpenThemeMenu={handleOpenThemeMenu} />;
