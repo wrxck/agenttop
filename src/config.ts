@@ -36,31 +36,53 @@ export const getTaskDirs = (allUsers: boolean): string[] => {
     }
   }
 
-  return [join(tmp, `claude-${uid}`)];
+  const dirs = [join(tmp, `claude-${uid}`)];
+
+  // when running as root via sudo, also include the original user's task dir
+  if (isRoot()) {
+    try {
+      const sudoUid = process.env['SUDO_UID'];
+      if (sudoUid && sudoUid !== String(uid)) {
+        dirs.push(join(tmp, `claude-${sudoUid}`));
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return dirs;
 };
 
 export const getProjectsDirs = (allUsers: boolean): string[] => {
   const dirs: string[] = [];
+  const addDir = (d: string) => {
+    if (!dirs.includes(d) && existsSync(d)) dirs.push(d);
+  };
+
   const home = homedir();
-  const primary = join(home, '.claude', 'projects');
-  if (existsSync(primary)) dirs.push(primary);
+  addDir(join(home, '.claude', 'projects'));
+
+  // when running as root (e.g. sudo agenttop), always include /root and the
+  // original user's home so both root-owned and user-owned sessions appear
+  if (isRoot()) {
+    addDir(join('/root', '.claude', 'projects'));
+    const sudoUser = process.env['SUDO_USER'];
+    if (sudoUser) {
+      const homeBase = platform() === 'darwin' ? '/Users' : '/home';
+      addDir(join(homeBase, sudoUser, '.claude', 'projects'));
+    }
+  }
 
   if (allUsers) {
     try {
       const homeBase = platform() === 'darwin' ? '/Users' : '/home';
       for (const user of readdirSync(homeBase)) {
-        const userProjects = join(homeBase, user, '.claude', 'projects');
-        if (userProjects !== primary && existsSync(userProjects)) {
-          dirs.push(userProjects);
-        }
+        addDir(join(homeBase, user, '.claude', 'projects'));
       }
     } catch {
       // can't read /home — skip
     }
-    const rootProjects = join('/root', '.claude', 'projects');
-    if (!dirs.includes(rootProjects) && existsSync(rootProjects)) {
-      dirs.push(rootProjects);
-    }
+    addDir(join('/root', '.claude', 'projects'));
   }
 
   return dirs;
