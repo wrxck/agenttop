@@ -49,7 +49,7 @@ export const checkForUpdate = (): Promise<UpdateInfo> =>
 export const installUpdate = (): Promise<string> => {
   const npm = getNpmPath();
   return new Promise((resolve, reject) => {
-    execFile(npm, ['install', '-g', 'agenttop@latest'], { timeout: 60000 }, (err, stdout) => {
+    execFile(npm, ['install', '-g', '--force', 'agenttop@latest'], { timeout: 60000 }, (err, stdout) => {
       if (err) {
         reject(err);
       } else {
