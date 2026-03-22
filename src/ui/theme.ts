@@ -15,6 +15,8 @@ export const colors: Record<string, string> = {
   border: '#3E4451',
   selected: '#2C313A',
   header: '#61AFEF',
+  waiting: '#E5C07B',
+  stale: '#D19A66',
 };
 
 export const severityColors: Record<string, string> = {

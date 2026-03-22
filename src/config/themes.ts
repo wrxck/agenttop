@@ -11,6 +11,8 @@ export interface ThemeColors {
   border: string;
   selected: string;
   header: string;
+  waiting: string;   // yellow — waiting for user input
+  stale: string;     // orange — idle/stale session
 }
 
 export interface ToolColors {
@@ -45,6 +47,7 @@ export const COLOR_KEYS: (keyof ThemeColors)[] = [
   'border',
   'selected',
   'header',
+  'waiting', 'stale',
 ];
 
 export const TOOL_COLOR_KEYS: (keyof ToolColors)[] = [
@@ -72,54 +75,23 @@ const deriveToolColors = (c: ThemeColors): ToolColors => ({
 });
 
 // Compact preset builder: [name, primary, secondary, accent, warning, error, critical,
-//   muted, text, bright, border, selected, header]
+//   muted, text, bright, border, selected, header, waiting, stale]
 type PresetTuple = [
-  string,
-  string,
-  string,
-  string,
-  string,
-  string,
-  string,
-  string,
-  string,
-  string,
-  string,
-  string,
-  string,
+  string, string, string, string, string, string, string,
+  string, string, string, string, string, string,
+  string, string,
 ];
 
 const fromTuple = ([
-  name,
-  primary,
-  secondary,
-  accent,
-  warning,
-  error,
-  critical,
-  muted,
-  text,
-  bright,
-  border,
-  selected,
-  header,
+  name, primary, secondary, accent, warning, error, critical,
+  muted, text, bright, border, selected, header,
+  waiting, stale,
 ]: PresetTuple): ThemeDefinition => ({
   name,
   builtin: true,
-  colors: { primary, secondary, accent, warning, error, critical, muted, text, bright, border, selected, header },
+  colors: { primary, secondary, accent, warning, error, critical, muted, text, bright, border, selected, header, waiting, stale },
   toolColors: deriveToolColors({
-    primary,
-    secondary,
-    accent,
-    warning,
-    error,
-    critical,
-    muted,
-    text,
-    bright,
-    border,
-    selected,
-    header,
+    primary, secondary, accent, warning, error, critical, muted, text, bright, border, selected, header, waiting, stale,
   }),
 });
 
@@ -138,6 +110,7 @@ const PRESETS: PresetTuple[] = [
     '#3E4451',
     '#2C313A',
     '#61AFEF',
+    '#E5C07B', '#D19A66',
   ],
   [
     'dracula',
@@ -153,6 +126,7 @@ const PRESETS: PresetTuple[] = [
     '#44475A',
     '#383A59',
     '#BD93F9',
+    '#F1FA8C', '#FFB86C',
   ],
   [
     'monokai-pro',
@@ -168,6 +142,7 @@ const PRESETS: PresetTuple[] = [
     '#403E41',
     '#2D2A2E',
     '#78DCE8',
+    '#FFD866', '#FC9867',
   ],
   [
     'solarized-dark',
@@ -183,6 +158,7 @@ const PRESETS: PresetTuple[] = [
     '#073642',
     '#002B36',
     '#268BD2',
+    '#B58900', '#CB4B16',
   ],
   [
     'solarized-light',
@@ -198,6 +174,7 @@ const PRESETS: PresetTuple[] = [
     '#EEE8D5',
     '#FDF6E3',
     '#268BD2',
+    '#B58900', '#CB4B16',
   ],
   [
     'nord',
@@ -213,6 +190,7 @@ const PRESETS: PresetTuple[] = [
     '#3B4252',
     '#2E3440',
     '#88C0D0',
+    '#EBCB8B', '#D08770',
   ],
   [
     'gruvbox-dark',
@@ -228,6 +206,7 @@ const PRESETS: PresetTuple[] = [
     '#3C3836',
     '#282828',
     '#83A598',
+    '#FABD2F', '#FE8019',
   ],
   [
     'tokyo-night',
@@ -243,6 +222,7 @@ const PRESETS: PresetTuple[] = [
     '#292E42',
     '#1A1B26',
     '#7AA2F7',
+    '#E0AF68', '#FF9E64',
   ],
   [
     'catppuccin-mocha',
@@ -258,6 +238,7 @@ const PRESETS: PresetTuple[] = [
     '#313244',
     '#1E1E2E',
     '#89B4FA',
+    '#F9E2AF', '#FAB387',
   ],
   [
     'catppuccin-latte',
@@ -273,6 +254,7 @@ const PRESETS: PresetTuple[] = [
     '#E6E9EF',
     '#EFF1F5',
     '#1E66F5',
+    '#DF8E1D', '#FE640B',
   ],
   [
     'rose-pine',
@@ -288,6 +270,7 @@ const PRESETS: PresetTuple[] = [
     '#26233A',
     '#191724',
     '#9CCFD8',
+    '#F6C177', '#EA9D34',
   ],
   [
     'rose-pine-moon',
@@ -303,6 +286,7 @@ const PRESETS: PresetTuple[] = [
     '#2A273F',
     '#232136',
     '#9CCFD8',
+    '#F6C177', '#EA9D34',
   ],
   [
     'pastel-dark',
@@ -318,6 +302,7 @@ const PRESETS: PresetTuple[] = [
     '#3A3A4A',
     '#2B2B3A',
     '#89CFF0',
+    '#FFD580', '#FFAA5E',
   ],
   [
     'kanagawa',
@@ -333,6 +318,7 @@ const PRESETS: PresetTuple[] = [
     '#2A2A37',
     '#1F1F28',
     '#7E9CD8',
+    '#E6C384', '#FFA066',
   ],
   [
     'everforest',
@@ -348,6 +334,7 @@ const PRESETS: PresetTuple[] = [
     '#374145',
     '#2D353B',
     '#7FBBB3',
+    '#DBBC7F', '#E69875',
   ],
 ];
 
