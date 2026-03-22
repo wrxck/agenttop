@@ -129,18 +129,20 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
           const tagColor = merged ? slugColorMap.get(call.sessionId) || colors.muted : undefined;
 
           return (
-            <Box key={`${call.timestamp}-${i}`} paddingX={1}>
-              {tag && <Text color={tagColor}>{tag.padEnd(5)}</Text>}
-              <Text color={isSelected ? colors.bright : colors.muted} underline={isSelected}>
-                {formatTime(call.timestamp)}
-              </Text>
-              <Text> </Text>
-              <Text color={getToolColor(call.toolName)} bold underline={isSelected}>
-                {call.toolName.padEnd(8)}
-              </Text>
-              <Text color={isSelected ? colors.bright : colors.text} underline={isSelected}>
+            <Box key={`${call.timestamp}-${i}`} paddingX={1} overflow="hidden">
+              <Text wrap="truncate">
+                {tag && <Text color={tagColor}>{tag.padEnd(5)}</Text>}
+                <Text color={isSelected ? colors.bright : colors.muted} underline={isSelected}>
+                  {formatTime(call.timestamp)}
+                </Text>
                 {' '}
-                {summarizeInput(call)}
+                <Text color={getToolColor(call.toolName)} bold underline={isSelected}>
+                  {call.toolName.padEnd(8)}
+                </Text>
+                <Text color={isSelected ? colors.bright : colors.text} underline={isSelected}>
+                  {' '}
+                  {summarizeInput(call)}
+                </Text>
               </Text>
             </Box>
           );
