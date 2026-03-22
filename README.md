@@ -22,6 +22,7 @@ Currently supports [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
 - [Token usage](#token-usage)
 - [Session nicknames](#session-nicknames)
 - [Session filtering](#session-filtering)
+- [Session management](#session-management)
 - [Session detail view](#session-detail-view)
 - [Streaming modes](#streaming-modes)
 - [Active protection](#active-protection)
@@ -55,7 +56,7 @@ npm install -g agenttop
 Run `agenttop` in one terminal while running Claude Code sessions in other tabs.
 
 ```
--- agenttop v0.3.0 ---- 3 sessions ---- 14:32:08 ---------------------
+-- agenttop v0.5.0 ---- 3 sessions ---- 14:32:08 ---------------------
 | SESSIONS                 | ACTIVITY (cuddly-wiggling-sundae)           |
 |                          |                                             |
 | > cuddly-wiggling-sundae | 14:32:05 Bash    ls /tmp/claude-0/         |
@@ -117,9 +118,30 @@ Nicknames are stored in `~/.config/agenttop/config.json`.
 
 ## Session filtering
 
-Press `/` to open the filter input. Type to filter sessions by slug, nickname, project, or model. Case-insensitive substring match.
+Press `/` to open the filter input. The filter applies to whichever panel is focused:
 
-Press `Esc` to clear the filter.
+- **Sessions panel** — filters by slug, nickname, project, or model
+- **Activity panel** — filters by tool name or tool input content
+
+Case-insensitive substring match. Press `Esc` to clear the filter.
+
+## Session management
+
+### Archive
+
+Press `a` to archive a session. Archived sessions are hidden from the main view but not deleted.
+
+Press `A` to toggle the archive view, which shows only archived sessions. In the archive view, press `a` to restore a session back to the main view.
+
+Archive expiry can be configured in settings (`s`) under GENERAL — options are never, 7d, 14d, 30d, 60d, or 90d. Expired archives are purged on launch.
+
+### Delete
+
+Press `d` to delete a session. A confirmation prompt appears. On confirm, the session's output files are removed from disk and any nickname or archive entry is cleared.
+
+### Active/inactive indicators
+
+Sessions with a running process are shown in green. Inactive sessions (no process) are shown in red.
 
 ## Session detail view
 
@@ -283,9 +305,15 @@ Config file at `~/.config/agenttop/config.json` (respects `XDG_CONFIG_HOME`):
     "nickname": "n",
     "clearNickname": "N",
     "detail": "enter",
-    "update": "u"
+    "update": "u",
+    "settings": "s",
+    "archive": "a",
+    "delete": "d",
+    "viewArchive": "A"
   },
   "nicknames": {},
+  "archived": {},
+  "archiveExpiryDays": 0,
   "security": {
     "enabled": true,
     "rules": {
@@ -313,9 +341,13 @@ Default keybindings:
 | `Tab` / left / right | Switch panel focus |
 | `Enter` | Open session detail view |
 | `Esc` | Close detail view / clear filter |
-| `/` | Filter sessions |
+| `/` | Filter active panel (sessions or activity) |
 | `n` | Set nickname for selected session |
 | `N` | Clear nickname |
+| `a` | Archive session (restore in archive view) |
+| `d` | Delete session (with confirmation) |
+| `A` | Toggle archive view |
+| `s` | Open settings |
 | `u` | Install available update |
 | `g` / `G` | Scroll to top / bottom of activity |
 | `q` | Quit |

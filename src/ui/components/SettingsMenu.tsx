@@ -28,12 +28,15 @@ const KEYBIND_LABELS: Record<keyof KeybindingsConfig, string> = {
   panelPrev: 'Previous panel',
   scrollTop: 'Scroll to top',
   scrollBottom: 'Scroll to bottom',
-  filter: 'Filter sessions',
+  filter: 'Filter',
   nickname: 'Set nickname',
   clearNickname: 'Clear nickname',
   detail: 'Detail view',
   update: 'Install update',
   settings: 'Settings',
+  archive: 'Archive session',
+  delete: 'Delete session',
+  viewArchive: 'View archive',
 };
 
 const RULE_LABELS: Record<keyof SecurityRulesConfig, string> = {
@@ -45,6 +48,8 @@ const RULE_LABELS: Record<keyof SecurityRulesConfig, string> = {
 };
 
 const SEVERITY_OPTIONS: NotificationsConfig['minSeverity'][] = ['info', 'warn', 'high', 'critical'];
+const ARCHIVE_EXPIRY_OPTIONS = [0, 7, 14, 30, 60, 90];
+const formatExpiry = (days: number): string => (days === 0 ? 'never' : `${days}d`);
 
 const displayKey = (key: string): string => {
   if (key === 'tab') return 'tab';
@@ -55,6 +60,21 @@ const displayKey = (key: string): string => {
 
 const buildMenuItems = (): MenuItem[] => {
   const items: MenuItem[] = [];
+
+  items.push({ type: 'header', label: 'GENERAL', section: 'general', getValue: () => '', key: undefined });
+
+  items.push({
+    type: 'cycle',
+    label: 'Archive expiry',
+    section: 'general',
+    key: 'archiveExpiryDays',
+    getValue: (cfg) => formatExpiry(cfg.archiveExpiryDays),
+    apply: (cfg) => {
+      const idx = ARCHIVE_EXPIRY_OPTIONS.indexOf(cfg.archiveExpiryDays);
+      const next = ARCHIVE_EXPIRY_OPTIONS[(idx + 1) % ARCHIVE_EXPIRY_OPTIONS.length];
+      return { ...cfg, archiveExpiryDays: next };
+    },
+  });
 
   items.push({ type: 'header', label: 'KEYBINDINGS', section: 'keybindings', getValue: () => '', key: undefined });
 

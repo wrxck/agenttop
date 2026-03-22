@@ -9,6 +9,7 @@ interface SessionListProps {
   selectedIndex: number;
   focused: boolean;
   filter?: string;
+  viewingArchive?: boolean;
 }
 
 const formatModel = (model: string): string => {
@@ -35,66 +36,77 @@ const truncate = (s: string, max: number): string => (s.length > max ? s.slice(0
 const SIDEBAR_WIDTH = 28;
 const INNER_WIDTH = SIDEBAR_WIDTH - 4; // borders + paddingX
 
-export const SessionList: React.FC<SessionListProps> = React.memo(({ sessions, selectedIndex, focused, filter }) => {
-  return (
-    <Box
-      flexDirection="column"
-      width={SIDEBAR_WIDTH}
-      borderStyle="single"
-      borderColor={focused ? colors.primary : colors.border}
-      overflow="hidden"
-    >
-      <Box paddingX={1}>
-        <Text color={colors.header} bold>
-          SESSIONS
-        </Text>
-        {filter && <Text color={colors.muted}> [{truncate(filter, 10)}]</Text>}
-      </Box>
+export const SessionList: React.FC<SessionListProps> = React.memo(
+  ({ sessions, selectedIndex, focused, filter, viewingArchive }) => {
+    const divider = '-'.repeat(INNER_WIDTH);
 
-      {sessions.length === 0 && (
-        <Box paddingX={1} paddingY={1}>
-          <Text color={colors.muted} italic>
-            {filter ? 'No matches' : 'No sessions'}
+    return (
+      <Box
+        flexDirection="column"
+        width={SIDEBAR_WIDTH}
+        borderStyle="single"
+        borderColor={focused ? colors.primary : colors.border}
+        overflow="hidden"
+      >
+        <Box paddingX={1}>
+          <Text color={viewingArchive ? colors.warning : colors.header} bold>
+            {viewingArchive ? 'ARCHIVE' : 'SESSIONS'}
           </Text>
+          {filter && <Text color={colors.muted}> [{truncate(filter, 10)}]</Text>}
         </Box>
-      )}
 
-      {sessions.map((session, i) => {
-        const isSelected = i === selectedIndex;
-        const indicator = isSelected ? '>' : ' ';
-        const nameMaxLen = INNER_WIDTH - 2; // indicator + space
-        const displayName = truncate(session.nickname || session.slug, nameMaxLen);
-        const totalIn = session.usage.inputTokens + session.usage.cacheReadTokens;
-        const proj = formatProject(session.project, 12);
-        const model = formatModel(session.model);
-
-        return (
-          <Box key={session.sessionId} flexDirection="column" paddingX={1} paddingY={0}>
-            <Text
-              color={isSelected ? colors.bright : colors.text}
-              bold={isSelected}
-              backgroundColor={isSelected ? colors.selected : undefined}
-              wrap="truncate"
-            >
-              {indicator} {displayName}
-            </Text>
-            {session.nickname && (
-              <Text color={colors.muted} wrap="truncate">
-                {'  '}
-                {truncate(session.slug, nameMaxLen)}
-              </Text>
-            )}
-            <Text color={colors.muted} wrap="truncate">
-              {'  '}
-              {proj} {model} {session.agentCount}ag
-            </Text>
-            <Text color={colors.muted} wrap="truncate">
-              {'  '}
-              {formatTokens(totalIn)}in {formatTokens(session.usage.outputTokens)}out {session.cpu}%
+        {sessions.length === 0 && (
+          <Box paddingX={1} paddingY={1}>
+            <Text color={colors.muted} italic>
+              {filter ? 'No matches' : viewingArchive ? 'No archived sessions' : 'No sessions'}
             </Text>
           </Box>
-        );
-      })}
-    </Box>
-  );
-});
+        )}
+
+        {sessions.map((session, i) => {
+          const isSelected = i === selectedIndex;
+          const indicator = isSelected ? '>' : ' ';
+          const nameMaxLen = INNER_WIDTH - 2;
+          const displayName = truncate(session.nickname || session.slug, nameMaxLen);
+          const totalIn = session.usage.inputTokens + session.usage.cacheReadTokens;
+          const proj = formatProject(session.project, 12);
+          const model = formatModel(session.model);
+          const isActive = session.pid !== null;
+          const nameColor = isSelected ? colors.bright : isActive ? colors.secondary : colors.error;
+
+          return (
+            <Box key={session.sessionId} flexDirection="column" paddingX={1} paddingY={0}>
+              {i > 0 && (
+                <Text color={colors.border} wrap="truncate">
+                  {divider}
+                </Text>
+              )}
+              <Text
+                color={nameColor}
+                bold={isSelected}
+                backgroundColor={isSelected ? colors.selected : undefined}
+                wrap="truncate"
+              >
+                {indicator} {displayName}
+              </Text>
+              {session.nickname && (
+                <Text color={colors.muted} wrap="truncate">
+                  {'    '}
+                  {truncate(session.slug, nameMaxLen)}
+                </Text>
+              )}
+              <Text color={colors.muted} wrap="truncate">
+                {'    '}
+                {proj} {model} {session.agentCount}ag
+              </Text>
+              <Text color={colors.muted} wrap="truncate">
+                {'    '}
+                {formatTokens(totalIn)}in {formatTokens(session.usage.outputTokens)}out {session.cpu}%
+              </Text>
+            </Box>
+          );
+        })}
+      </Box>
+    );
+  },
+);

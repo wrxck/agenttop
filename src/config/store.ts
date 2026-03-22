@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync, renameSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync, renameSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 
@@ -45,6 +45,9 @@ export interface KeybindingsConfig {
   detail: string;
   update: string;
   settings: string;
+  archive: string;
+  delete: string;
+  viewArchive: string;
 }
 
 export interface Config {
@@ -62,6 +65,8 @@ export interface Config {
     rules: SecurityRulesConfig;
   };
   prompts: PromptsConfig;
+  archived: Record<string, number>;
+  archiveExpiryDays: number;
 }
 
 export const getConfigDir = (): string => {
@@ -104,6 +109,9 @@ const defaultConfig = (): Config => ({
     detail: 'enter',
     update: 'u',
     settings: 's',
+    archive: 'a',
+    delete: 'd',
+    viewArchive: 'A',
   },
   security: {
     enabled: true,
@@ -119,6 +127,8 @@ const defaultConfig = (): Config => ({
     hook: 'pending',
     mcp: 'pending',
   },
+  archived: {},
+  archiveExpiryDays: 0,
 });
 
 const deepMerge = (target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> => {
@@ -206,5 +216,45 @@ export const rotateLogFile = (filePath: string, maxBytes = 10 * 1024 * 1024): vo
     }
   } catch {
     // file doesn't exist yet
+  }
+};
+
+export const archiveSession = (sessionId: string): void => {
+  const config = loadConfig();
+  config.archived[sessionId] = Date.now();
+  saveConfig(config);
+};
+
+export const unarchiveSession = (sessionId: string): void => {
+  const config = loadConfig();
+  delete config.archived[sessionId];
+  saveConfig(config);
+};
+
+export const getArchived = (): Record<string, number> => {
+  return loadConfig().archived;
+};
+
+export const purgeExpiredArchives = (): void => {
+  const config = loadConfig();
+  if (config.archiveExpiryDays <= 0) return;
+  const cutoff = Date.now() - config.archiveExpiryDays * 86_400_000;
+  let changed = false;
+  for (const [id, ts] of Object.entries(config.archived)) {
+    if (ts < cutoff) {
+      delete config.archived[id];
+      changed = true;
+    }
+  }
+  if (changed) saveConfig(config);
+};
+
+export const deleteSessionFiles = (outputFiles: string[]): void => {
+  for (const file of outputFiles) {
+    try {
+      unlinkSync(file);
+    } catch {
+      /* file may already be gone */
+    }
   }
 };

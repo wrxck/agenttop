@@ -7,6 +7,7 @@ import { colors } from '../theme.js';
 interface FooterBarProps {
   keybindings: KeybindingsConfig;
   updateStatus?: string;
+  viewingArchive?: boolean;
 }
 
 const label = (key: string): string => {
@@ -16,7 +17,7 @@ const label = (key: string): string => {
   return key;
 };
 
-export const FooterBar: React.FC<FooterBarProps> = React.memo(({ keybindings, updateStatus }) => (
+export const FooterBar: React.FC<FooterBarProps> = React.memo(({ keybindings, updateStatus, viewingArchive }) => (
   <Box paddingX={1}>
     <Box marginRight={2}>
       <Text color="#5C6370">{label(keybindings.quit)}:quit</Text>
@@ -37,6 +38,17 @@ export const FooterBar: React.FC<FooterBarProps> = React.memo(({ keybindings, up
     </Box>
     <Box marginRight={2}>
       <Text color="#5C6370">{label(keybindings.detail)}:detail</Text>
+    </Box>
+    <Box marginRight={2}>
+      <Text color="#5C6370">
+        {label(keybindings.archive)}:{viewingArchive ? 'restore' : 'archive'}
+      </Text>
+    </Box>
+    <Box marginRight={2}>
+      <Text color="#5C6370">{label(keybindings.delete)}:delete</Text>
+    </Box>
+    <Box marginRight={2}>
+      <Text color="#5C6370">{label(keybindings.viewArchive)}:archived</Text>
     </Box>
     <Box marginRight={2}>
       <Text color="#5C6370">{label(keybindings.settings)}:settings</Text>
