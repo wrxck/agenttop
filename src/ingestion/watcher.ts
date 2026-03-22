@@ -2,25 +2,33 @@ import { watch } from 'chokidar';
 import type { FSWatcher } from 'chokidar';
 
 import { getTaskDirs } from '../config.js';
-import type { ToolCall, SecurityEvent } from '../discovery/types.js';
+import type { ToolCall, SecurityEvent, TokenUsage } from '../discovery/types.js';
 import { FileTailer } from './tail.js';
-import { parseLines, parseAllEvents } from './parser.js';
+import { parseLines, parseAllEvents, parseUsageFromLines } from './parser.js';
 
 export type ToolCallHandler = (calls: ToolCall[]) => void;
 export type SecurityEventHandler = (events: SecurityEvent[]) => void;
+export type UsageHandler = (sessionId: string, usage: TokenUsage) => void;
 
 export class Watcher {
   private watcher: FSWatcher | null = null;
   private tailer = new FileTailer();
   private handler: ToolCallHandler;
   private securityHandler: SecurityEventHandler | null;
+  private usageHandler: UsageHandler | null;
   private allUsers: boolean;
   private knownFiles = new Set<string>();
 
-  constructor(handler: ToolCallHandler, allUsers: boolean, securityHandler?: SecurityEventHandler) {
+  constructor(
+    handler: ToolCallHandler,
+    allUsers: boolean,
+    securityHandler?: SecurityEventHandler,
+    usageHandler?: UsageHandler,
+  ) {
     this.handler = handler;
     this.allUsers = allUsers;
     this.securityHandler = securityHandler ?? null;
+    this.usageHandler = usageHandler ?? null;
   }
 
   start(): void {
@@ -53,6 +61,16 @@ export class Watcher {
         const allEvents = parseAllEvents(lines);
         if (allEvents.length > 0) {
           this.securityHandler(allEvents);
+        }
+      }
+
+      if (this.usageHandler) {
+        const usage = parseUsageFromLines(lines);
+        if (usage.inputTokens > 0 || usage.outputTokens > 0) {
+          const firstCall = calls[0];
+          if (firstCall) {
+            this.usageHandler(firstCall.sessionId, usage);
+          }
         }
       }
     });
