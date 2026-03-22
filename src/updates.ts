@@ -14,6 +14,13 @@ const getPackageVersion = async (): Promise<string> => {
   }
 };
 
+// resolve the npm binary from the same node prefix as this process,
+// so updates go to the right location even when running under sudo
+const getNpmPath = (): string => {
+  const nodeDir = dirname(process.execPath);
+  return join(nodeDir, 'npm');
+};
+
 export interface UpdateInfo {
   current: string;
   latest: string;
@@ -22,8 +29,9 @@ export interface UpdateInfo {
 
 export const checkForUpdate = (): Promise<UpdateInfo> =>
   new Promise((resolve) => {
+    const npm = getNpmPath();
     getPackageVersion().then((current) => {
-      execFile('npm', ['view', 'agenttop', 'version'], { encoding: 'utf-8', timeout: 5000 }, (err, stdout) => {
+      execFile(npm, ['view', 'agenttop', 'version'], { encoding: 'utf-8', timeout: 5000 }, (err, stdout) => {
         if (err || !stdout) {
           resolve({ current, latest: current, available: false });
           return;
@@ -39,8 +47,9 @@ export const checkForUpdate = (): Promise<UpdateInfo> =>
   });
 
 export const installUpdate = (): Promise<string> => {
+  const npm = getNpmPath();
   return new Promise((resolve, reject) => {
-    exec('npm install -g agenttop@latest', { timeout: 60000 }, (err, stdout) => {
+    exec(`${npm} install -g agenttop@latest`, { timeout: 60000 }, (err, stdout) => {
       if (err) {
         reject(err);
       } else {
