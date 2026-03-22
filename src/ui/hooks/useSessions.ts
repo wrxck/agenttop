@@ -7,7 +7,12 @@ import { getNicknames } from '../../config/store.js';
 const ACTIVE_POLL_MS = 10_000;
 const IDLE_POLL_MS = 30_000;
 
-export const useSessions = (allUsers: boolean, filter?: string) => {
+export const useSessions = (
+  allUsers: boolean,
+  filter?: string,
+  archivedIds?: Set<string>,
+  viewingArchive?: boolean,
+) => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const usageOverrides = useRef(new Map<string, TokenUsage>());
@@ -33,9 +38,20 @@ export const useSessions = (allUsers: boolean, filter?: string) => {
     });
 
     let filtered = enriched;
+
+    if (archivedIds && archivedIds.size > 0) {
+      if (viewingArchive) {
+        filtered = filtered.filter((s) => archivedIds.has(s.sessionId));
+      } else {
+        filtered = filtered.filter((s) => !archivedIds.has(s.sessionId));
+      }
+    } else if (viewingArchive) {
+      filtered = [];
+    }
+
     if (filter) {
       const lower = filter.toLowerCase();
-      filtered = enriched.filter(
+      filtered = filtered.filter(
         (s) =>
           s.slug.toLowerCase().includes(lower) ||
           s.nickname?.toLowerCase().includes(lower) ||
@@ -45,7 +61,7 @@ export const useSessions = (allUsers: boolean, filter?: string) => {
     }
 
     setSessions(filtered);
-  }, [allUsers, filter]);
+  }, [allUsers, filter, archivedIds, viewingArchive]);
 
   useEffect(() => {
     refresh();

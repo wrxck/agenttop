@@ -10,6 +10,7 @@ interface ActivityFeedProps {
   focused: boolean;
   height: number;
   scrollOffset: number;
+  filter?: string;
 }
 
 const formatTime = (ts: number): string => {
@@ -45,7 +46,7 @@ const summarizeInput = (call: ToolCall): string => {
 };
 
 export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
-  ({ events, sessionSlug, focused, height, scrollOffset }) => {
+  ({ events, sessionSlug, focused, height, scrollOffset, filter }) => {
     const viewportRows = height - 2;
     const totalEvents = events.length;
     const start = Math.max(0, totalEvents - viewportRows - scrollOffset);
@@ -69,6 +70,9 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
               ACTIVITY
             </Text>
             {sessionSlug && <Text color={colors.muted}> ({sessionSlug})</Text>}
+            {filter && (
+              <Text color={colors.muted}> [{filter.length > 10 ? filter.slice(0, 9) + '\u2026' : filter}]</Text>
+            )}
           </Box>
           {focused && canScroll && !isAtBottom && (
             <Text color={colors.muted}>

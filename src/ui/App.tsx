@@ -1,13 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Text, useApp, useInput, useStdout } from 'ink';
+import { Box, Text, useApp, useStdout } from 'ink';
 
-import type { CLIOptions } from '../discovery/types.js';
+import type { CLIOptions, Session } from '../discovery/types.js';
 import type { Config } from '../config/store.js';
-import { setNickname, clearNickname, saveConfig } from '../config/store.js';
+import {
+  setNickname,
+  clearNickname,
+  saveConfig,
+  archiveSession,
+  unarchiveSession,
+  getArchived,
+  purgeExpiredArchives,
+  deleteSessionFiles,
+} from '../config/store.js';
+import { resolveTheme } from '../config/themes.js';
 import { installHooks } from '../hooks/installer.js';
 import { installMcpConfig } from '../install-mcp.js';
-import { checkForUpdate, installUpdate } from '../updates.js';
-import type { UpdateInfo } from '../updates.js';
+import { installUpdate } from '../updates.js';
 import { StatusBar } from './components/StatusBar.js';
 import { SessionList } from './components/SessionList.js';
 import { ActivityFeed } from './components/ActivityFeed.js';
@@ -16,14 +25,19 @@ import { SessionDetail } from './components/SessionDetail.js';
 import { SetupModal } from './components/SetupModal.js';
 import { FooterBar } from './components/FooterBar.js';
 import { SettingsMenu } from './components/SettingsMenu.js';
+import { ThemeMenu } from './components/ThemeMenu.js';
+import { ConfirmModal } from './components/ConfirmModal.js';
+import { SplitPanel } from './components/SplitPanel.js';
 import { useSessions } from './hooks/useSessions.js';
 import { useActivityStream } from './hooks/useActivityStream.js';
+import { useFilteredEvents } from './hooks/useFilteredEvents.js';
 import { useAlerts } from './hooks/useAlerts.js';
 import { useTextInput } from './hooks/useTextInput.js';
-import { colors } from './theme.js';
+import { useKeyHandler } from './hooks/useKeyHandler.js';
+import { useUpdateChecker } from './hooks/useUpdateChecker.js';
+import { colors, applyTheme } from './theme.js';
 
-type Panel = 'sessions' | 'activity';
-type InputMode = 'normal' | 'nickname' | 'filter';
+export type Panel = 'sessions' | 'activity' | 'left' | 'right';
 
 interface AppProps {
   options: CLIOptions;
@@ -31,13 +45,6 @@ interface AppProps {
   version: string;
   firstRun: boolean;
 }
-
-const matchKey = (binding: string, input: string, key: Record<string, unknown>): boolean => {
-  if (binding === 'tab') return Boolean(key.tab);
-  if (binding === 'shift+tab') return Boolean(key.shift && key.tab);
-  if (binding === 'enter') return Boolean(key.return);
-  return input === binding;
-};
 
 export const App: React.FC<AppProps> = ({ options, config: initialConfig, version, firstRun }) => {
   const { exit } = useApp();
@@ -48,19 +55,54 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
 
   const [activePanel, setActivePanel] = useState<Panel>('sessions');
   const [activityScroll, setActivityScroll] = useState(0);
-  const [inputMode, setInputMode] = useState<InputMode>('normal');
+  const [inputMode, setInputMode] = useState<'normal' | 'nickname' | 'filter'>('normal');
   const [showSetup, setShowSetup] = useState(firstRun);
   const [filter, setFilter] = useState('');
-  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [activityFilter, setActivityFilter] = useState('');
   const [updateStatus, setUpdateStatus] = useState('');
   const [showDetail, setShowDetail] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showThemeMenu, setShowThemeMenu] = useState(false);
+  const [viewingArchive, setViewingArchive] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; onConfirm: () => void } | null>(
+    null,
+  );
+  const [archivedIds, setArchivedIds] = useState<Set<string>>(() => new Set(Object.keys(getArchived())));
+
+  const [splitMode, setSplitMode] = useState(false);
+  const [leftSession, setLeftSession] = useState<Session | null>(null);
+  const [rightSession, setRightSession] = useState<Session | null>(null);
+  const [leftScroll, setLeftScroll] = useState(0);
+  const [rightScroll, setRightScroll] = useState(0);
+  const [leftFilter, setLeftFilter] = useState('');
+  const [rightFilter, setRightFilter] = useState('');
+  const [leftShowDetail, setLeftShowDetail] = useState(false);
+  const [rightShowDetail, setRightShowDetail] = useState(false);
+
+  const refreshArchived = useCallback(() => setArchivedIds(new Set(Object.keys(getArchived()))), []);
+  const updateInfo = useUpdateChecker(
+    options.noUpdates,
+    liveConfig.updates.checkOnLaunch,
+    liveConfig.updates.checkInterval,
+  );
+
+  useEffect(() => {
+    applyTheme(resolveTheme(liveConfig.theme, liveConfig.customThemes));
+  }, [liveConfig.theme, liveConfig.customThemes]);
 
   const { sessions, selectedSession, selectedIndex, selectNext, selectPrev, refresh } = useSessions(
     options.allUsers,
     filter || undefined,
+    archivedIds,
+    viewingArchive,
   );
-  const events = useActivityStream(selectedSession, options.allUsers);
+
+  const rawEvents = useActivityStream(splitMode ? null : selectedSession, options.allUsers);
+  const leftRawEvents = useActivityStream(splitMode ? leftSession : null, options.allUsers);
+  const rightRawEvents = useActivityStream(splitMode ? rightSession : null, options.allUsers);
+  const events = useFilteredEvents(rawEvents, activityFilter);
+  const leftEvents = useFilteredEvents(leftRawEvents, leftFilter);
+  const rightEvents = useFilteredEvents(rightRawEvents, rightFilter);
   const { alerts } = useAlerts(!options.noSecurity, options.alertLevel, options.allUsers, liveConfig);
 
   const nicknameInput = useTextInput(
@@ -75,48 +117,45 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
   );
   const filterInput = useTextInput(
     (value) => {
-      setFilter(value);
+      if (activePanel === 'sessions') setFilter(value);
+      else if (activePanel === 'left') setLeftFilter(value);
+      else if (activePanel === 'right') setRightFilter(value);
+      else setActivityFilter(value);
       setInputMode('normal');
     },
     () => {
-      setFilter('');
+      if (activePanel === 'sessions') setFilter('');
+      else if (activePanel === 'left') setLeftFilter('');
+      else if (activePanel === 'right') setRightFilter('');
+      else setActivityFilter('');
       setInputMode('normal');
     },
   );
 
   useEffect(() => {
-    if (options.noUpdates || !liveConfig.updates.checkOnLaunch) return;
-    try {
-      const i = checkForUpdate();
-      if (i.available) setUpdateInfo(i);
-    } catch {
-      /* */
-    }
-    const iv = setInterval(() => {
-      try {
-        const i = checkForUpdate();
-        if (i.available) setUpdateInfo(i);
-      } catch {
-        /* */
-      }
-    }, liveConfig.updates.checkInterval);
-    return () => clearInterval(iv);
+    purgeExpiredArchives();
+    refreshArchived();
   }, []);
-
-  const alertHeight = options.noSecurity ? 0 : 6;
-  const mainHeight = termHeight - 3 - alertHeight - 1 - (inputMode !== 'normal' ? 1 : 0);
-  const viewportRows = mainHeight - 2;
-  const maxScroll = Math.max(0, events.length - viewportRows);
-
   useEffect(() => {
     setActivityScroll(0);
   }, [selectedSession?.sessionId]);
 
-  const handleSettingsClose = useCallback((updatedConfig: Config) => {
-    setLiveConfig(updatedConfig);
-    saveConfig(updatedConfig);
+  const alertHeight = options.noSecurity ? 0 : 6;
+  const mainHeight = termHeight - 3 - alertHeight - 1 - (inputMode !== 'normal' ? 1 : 0);
+  const viewportRows = mainHeight - 2;
+
+  const handleSettingsClose = useCallback((c: Config) => {
+    setLiveConfig(c);
+    saveConfig(c);
     setShowSettings(false);
   }, []);
+  const handleThemeMenuClose = useCallback((c: Config) => {
+    setLiveConfig(c);
+    saveConfig(c);
+    setShowThemeMenu(false);
+    setShowSettings(true);
+  }, []);
+  const handleOpenThemeMenu = useCallback(() => setShowThemeMenu(true), []);
 
   const handleSetupComplete = useCallback(
     (results: Array<'yes' | 'not_now' | 'dismiss'>) => {
@@ -144,132 +183,228 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
     [liveConfig],
   );
 
-  const switchPanel = useCallback((_dir: 'next' | 'prev') => {
-    setActivePanel((p) => (p === 'sessions' ? 'activity' : 'sessions'));
+  const switchPanel = useCallback(
+    (dir: 'next' | 'prev') => {
+      if (splitMode) {
+        const order: Panel[] = ['sessions', 'left', 'right'];
+        setActivePanel((p) => {
+          const idx = order.indexOf(p);
+          if (idx === -1) return 'sessions';
+          return dir === 'next' ? order[(idx + 1) % order.length] : order[(idx - 1 + order.length) % order.length];
+        });
+      } else {
+        setActivePanel((p) => (p === 'sessions' ? 'activity' : 'sessions'));
+      }
+    },
+    [splitMode],
+  );
+
+  const getActiveFilter = useCallback(() => {
+    if (activePanel === 'sessions') return filter;
+    if (activePanel === 'left') return leftFilter;
+    if (activePanel === 'right') return rightFilter;
+    return activityFilter;
+  }, [activePanel, filter, leftFilter, rightFilter, activityFilter]);
+
+  const clearSplitState = useCallback(() => {
+    setSplitMode(false);
+    setLeftSession(null);
+    setRightSession(null);
+    setLeftScroll(0);
+    setRightScroll(0);
+    setLeftFilter('');
+    setRightFilter('');
+    setLeftShowDetail(false);
+    setRightShowDetail(false);
+    setActivePanel('sessions');
   }, []);
 
-  useInput((input, key) => {
-    if (showSetup || showSettings) return;
+  const resetPanel = useCallback((side: 'left' | 'right') => {
+    if (side === 'left') {
+      setLeftSession(null);
+      setLeftScroll(0);
+      setLeftFilter('');
+      setLeftShowDetail(false);
+    } else {
+      setRightSession(null);
+      setRightScroll(0);
+      setRightFilter('');
+      setRightShowDetail(false);
+    }
+  }, []);
 
-    if (inputMode === 'nickname') {
-      nicknameInput.handleInput(input, key);
-      return;
-    }
-    if (inputMode === 'filter') {
-      if (key.escape) {
-        setFilter('');
-        setInputMode('normal');
-        filterInput.cancel();
-        return;
-      }
-      filterInput.handleInput(input, key);
-      return;
-    }
-
-    if (matchKey(kb.quit, input, key)) {
-      exit();
-      return;
-    }
-
-    if (showDetail) {
-      if (key.escape || key.return || key.leftArrow) {
-        setShowDetail(false);
-      }
-      return;
-    }
-
-    if (matchKey(kb.detail, input, key) && selectedSession && activePanel === 'sessions') {
-      setShowDetail(true);
-      return;
-    }
-
-    if (matchKey(kb.panelNext, input, key) || key.rightArrow) {
-      switchPanel('next');
-      return;
-    }
-    if (matchKey(kb.panelPrev, input, key) || key.leftArrow) {
-      switchPanel('prev');
-      return;
-    }
-
-    if (matchKey(kb.nickname, input, key) && selectedSession) {
-      setInputMode('nickname');
-      nicknameInput.start(selectedSession.nickname || '');
-      return;
-    }
-    if (matchKey(kb.clearNickname, input, key) && selectedSession) {
-      clearNickname(selectedSession.sessionId);
+  useKeyHandler({
+    kb,
+    activePanel,
+    splitMode,
+    inputMode,
+    showSetup,
+    showSettings: showSettings || showThemeMenu,
+    showDetail,
+    leftShowDetail,
+    rightShowDetail,
+    confirmAction,
+    selectedSession,
+    leftSession,
+    rightSession,
+    leftScroll,
+    rightScroll,
+    leftFilter,
+    rightFilter,
+    filter,
+    activityFilter,
+    viewingArchive,
+    archivedIds,
+    updateInfo,
+    maxScroll: Math.max(0, events.length - viewportRows),
+    leftMaxScroll: Math.max(0, leftEvents.length - viewportRows),
+    rightMaxScroll: Math.max(0, rightEvents.length - viewportRows),
+    exit,
+    selectNext,
+    selectPrev,
+    refresh,
+    switchPanel,
+    clearSplitState,
+    resetPanel,
+    getActiveFilter,
+    setActivePanel,
+    setInputMode,
+    setFilter,
+    setActivityFilter,
+    setLeftFilter,
+    setRightFilter,
+    setShowDetail,
+    setLeftShowDetail,
+    setRightShowDetail,
+    setShowSettings,
+    setViewingArchive,
+    setSplitMode,
+    setLeftSession,
+    setRightSession,
+    setLeftScroll,
+    setRightScroll,
+    setActivityScroll,
+    setConfirmAction,
+    setUpdateStatus,
+    nicknameInput,
+    filterInput,
+    onNickname: (id) => {
+      clearNickname(id);
       refresh();
-      return;
-    }
-    if (matchKey(kb.filter, input, key)) {
-      setInputMode('filter');
-      filterInput.start(filter);
-      return;
-    }
-    if (key.escape && filter) {
-      setFilter('');
-      return;
-    }
-    if (matchKey(kb.settings, input, key)) {
-      setShowSettings(true);
-      return;
-    }
-    if (matchKey(kb.update, input, key) && updateInfo?.available) {
+    },
+    onClearNickname: (id) => {
+      clearNickname(id);
+      refresh();
+    },
+    onArchive: (id) => {
+      archiveSession(id);
+      refreshArchived();
+      refresh();
+    },
+    onUnarchive: (id) => {
+      unarchiveSession(id);
+      refreshArchived();
+      refresh();
+    },
+    onDelete: (sess) =>
+      setConfirmAction({
+        title: 'Delete session?',
+        message: `Delete ${sess.nickname || sess.slug}? Output files will be removed.`,
+        onConfirm: () => {
+          deleteSessionFiles(sess.outputFiles);
+          clearNickname(sess.sessionId);
+          if (archivedIds.has(sess.sessionId)) {
+            unarchiveSession(sess.sessionId);
+            refreshArchived();
+          }
+          refresh();
+          setConfirmAction(null);
+        },
+      }),
+    onUpdate: () => {
       setUpdateStatus('updating...');
       installUpdate()
-        .then(() => setUpdateStatus(`updated to v${updateInfo.latest} — restart to apply`))
+        .then(() => setUpdateStatus(`updated to v${updateInfo?.latest} — restart to apply`))
         .catch(() => setUpdateStatus('update failed'));
-      return;
-    }
-
-    if (activePanel === 'sessions') {
-      if (matchKey(kb.navDown, input, key) || key.downArrow) selectNext();
-      if (matchKey(kb.navUp, input, key) || key.upArrow) selectPrev();
-    }
-    if (activePanel === 'activity') {
-      if (matchKey(kb.navUp, input, key) || key.upArrow) setActivityScroll((s) => Math.min(s + 1, maxScroll));
-      if (matchKey(kb.navDown, input, key) || key.downArrow) setActivityScroll((s) => Math.max(s - 1, 0));
-      if (matchKey(kb.scrollBottom, input, key) || key.end) setActivityScroll(0);
-      if (matchKey(kb.scrollTop, input, key) || key.home) setActivityScroll(maxScroll);
-    }
+    },
   });
 
   if (showSetup) {
-    const steps = [];
-    if (liveConfig.prompts.hook === 'pending')
-      steps.push({
-        title: 'Install Claude Code hook?',
-        description: 'Adds a PostToolUse hook that blocks prompt injection attempts in real-time.',
-      });
-    if (liveConfig.prompts.mcp === 'pending')
-      steps.push({
-        title: 'Install MCP server?',
-        description: 'Registers agenttop as an MCP server so Claude Code can query session status and alerts.',
-      });
+    const steps = [
+      ...(liveConfig.prompts.hook === 'pending'
+        ? [
+            {
+              title: 'Install Claude Code hook?',
+              description: 'Adds a PostToolUse hook that blocks prompt injection attempts in real-time.',
+            },
+          ]
+        : []),
+      ...(liveConfig.prompts.mcp === 'pending'
+        ? [
+            {
+              title: 'Install MCP server?',
+              description: 'Registers agenttop as an MCP server so Claude Code can query session status and alerts.',
+            },
+          ]
+        : []),
+    ];
     if (steps.length === 0) {
       setShowSetup(false);
       return null;
     }
     return <SetupModal steps={steps} onComplete={handleSetupComplete} />;
   }
-
-  if (showSettings) {
-    return <SettingsMenu config={liveConfig} onClose={handleSettingsClose} />;
+  if (showThemeMenu) return <ThemeMenu config={liveConfig} onClose={handleThemeMenuClose} />;
+  if (showSettings)
+    return <SettingsMenu config={liveConfig} onClose={handleSettingsClose} onOpenThemeMenu={handleOpenThemeMenu} />;
+  if (confirmAction) {
+    return (
+      <Box flexDirection="column" height={termHeight} justifyContent="center" alignItems="center">
+        <ConfirmModal
+          title={confirmAction.title}
+          message={confirmAction.message}
+          onConfirm={confirmAction.onConfirm}
+          onCancel={() => setConfirmAction(null)}
+        />
+      </Box>
+    );
   }
 
-  const rightPanel =
-    showDetail && selectedSession ? (
-      <SessionDetail session={selectedSession} focused={activePanel === 'activity'} height={mainHeight} />
-    ) : (
-      <ActivityFeed
-        events={events}
-        sessionSlug={selectedSession?.slug ?? null}
-        focused={activePanel === 'activity'}
-        height={mainHeight}
-        scrollOffset={activityScroll}
-      />
-    );
+  const filterLabel =
+    activePanel === 'sessions'
+      ? 'sessions'
+      : activePanel === 'left'
+        ? 'left'
+        : activePanel === 'right'
+          ? 'right'
+          : 'activity';
+  const rightPanel = splitMode ? (
+    <SplitPanel
+      activePanel={activePanel}
+      leftSession={leftSession}
+      rightSession={rightSession}
+      leftEvents={leftEvents}
+      rightEvents={rightEvents}
+      leftScroll={leftScroll}
+      rightScroll={rightScroll}
+      leftFilter={leftFilter}
+      rightFilter={rightFilter}
+      leftShowDetail={leftShowDetail}
+      rightShowDetail={rightShowDetail}
+      height={mainHeight}
+    />
+  ) : showDetail && selectedSession ? (
+    <SessionDetail session={selectedSession} focused={activePanel === 'activity'} height={mainHeight} />
+  ) : (
+    <ActivityFeed
+      events={events}
+      sessionSlug={selectedSession?.slug ?? null}
+      focused={activePanel === 'activity'}
+      height={mainHeight}
+      scrollOffset={activityScroll}
+      filter={activityFilter || undefined}
+    />
+  );
 
   return (
     <Box flexDirection="column" height={termHeight}>
@@ -280,6 +415,7 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
           selectedIndex={selectedIndex}
           focused={activePanel === 'sessions'}
           filter={filter || undefined}
+          viewingArchive={viewingArchive}
         />
         {rightPanel}
       </Box>
@@ -293,12 +429,15 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
       )}
       {inputMode === 'filter' && (
         <Box paddingX={1}>
+          <Text color={colors.muted}>{filterLabel}</Text>
           <Text color={colors.primary}>/</Text>
           <Text color={colors.bright}>{filterInput.value}</Text>
           <Text color={colors.muted}>_</Text>
         </Box>
       )}
-      {inputMode === 'normal' && <FooterBar keybindings={kb} updateStatus={updateStatus} />}
+      {inputMode === 'normal' && (
+        <FooterBar keybindings={kb} updateStatus={updateStatus} viewingArchive={viewingArchive} splitMode={splitMode} />
+      )}
     </Box>
   );
 };

@@ -4,7 +4,19 @@ import { tmpdir } from 'node:os';
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-import { loadConfig, saveConfig, isFirstRun, setNickname, clearNickname, getConfigDir } from '../src/config/store.js';
+import {
+  loadConfig,
+  saveConfig,
+  isFirstRun,
+  setNickname,
+  clearNickname,
+  getConfigDir,
+  archiveSession,
+  unarchiveSession,
+  getArchived,
+  purgeExpiredArchives,
+  deleteSessionFiles,
+} from '../src/config/store.js';
 
 const testDir = join(tmpdir(), `agenttop-test-${Date.now()}`);
 
@@ -68,5 +80,65 @@ describe('config store', () => {
   it('respects XDG_CONFIG_HOME', () => {
     const dir = getConfigDir();
     expect(dir).toBe(join(testDir, 'agenttop'));
+  });
+
+  it('archive and unarchive session', () => {
+    saveConfig(loadConfig());
+    archiveSession('sess-a');
+    const archived = getArchived();
+    expect(archived['sess-a']).toBeDefined();
+    expect(typeof archived['sess-a']).toBe('number');
+
+    unarchiveSession('sess-a');
+    const archived2 = getArchived();
+    expect(archived2['sess-a']).toBeUndefined();
+  });
+
+  it('purges expired archives', () => {
+    const config = loadConfig();
+    config.archiveExpiryDays = 7;
+    config.archived = {
+      'old-sess': Date.now() - 8 * 86_400_000,
+      'new-sess': Date.now() - 1 * 86_400_000,
+    };
+    saveConfig(config);
+
+    purgeExpiredArchives();
+
+    const loaded = loadConfig();
+    expect(loaded.archived['old-sess']).toBeUndefined();
+    expect(loaded.archived['new-sess']).toBeDefined();
+  });
+
+  it('does not purge when expiry is 0 (never)', () => {
+    const config = loadConfig();
+    config.archiveExpiryDays = 0;
+    config.archived = { 'old-sess': Date.now() - 365 * 86_400_000 };
+    saveConfig(config);
+
+    purgeExpiredArchives();
+
+    const loaded = loadConfig();
+    expect(loaded.archived['old-sess']).toBeDefined();
+  });
+
+  it('deleteSessionFiles removes files', () => {
+    const tmpFile = join(testDir, 'test-output.jsonl');
+    writeFileSync(tmpFile, 'test data');
+    deleteSessionFiles([tmpFile]);
+    expect(require('node:fs').existsSync(tmpFile)).toBe(false);
+  });
+
+  it('deleteSessionFiles handles missing files gracefully', () => {
+    expect(() => deleteSessionFiles(['/nonexistent/path/file.jsonl'])).not.toThrow();
+  });
+
+  it('defaults include archive fields', () => {
+    const config = loadConfig();
+    expect(config.archived).toEqual({});
+    expect(config.archiveExpiryDays).toBe(0);
+    expect(config.keybindings.archive).toBe('a');
+    expect(config.keybindings.delete).toBe('d');
+    expect(config.keybindings.viewArchive).toBe('A');
   });
 });

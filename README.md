@@ -7,11 +7,13 @@
 [![Node.js](https://img.shields.io/node/v/agenttop.svg)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](https://www.typescriptlang.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/wrxck/agenttop/pulls)
-[![npm bundle size](https://img.shields.io/bundlephobia/minzip/agenttop)](https://bundlephobia.com/package/agenttop)
+[![Lines of code](https://tokei.rs/b1/github/wrxck/agenttop)](https://github.com/wrxck/agenttop)
 
 Real-time terminal dashboard for monitoring AI coding agent sessions — like `htop` for agents.
 
 Currently supports [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Reads local session data only — no network requests, no API keys.
+
+Read more about [why agenttop was built](https://blog.matthesketh.pro/blog/agenttop).
 
 > **Experimental** — this project is under active development. APIs and configuration may change between releases. Feature requests, bug reports, and contributions are very welcome. See [Contributing](#contributing).
 
@@ -22,7 +24,10 @@ Currently supports [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
 - [Token usage](#token-usage)
 - [Session nicknames](#session-nicknames)
 - [Session filtering](#session-filtering)
+- [Session management](#session-management)
 - [Session detail view](#session-detail-view)
+- [Split view](#split-view)
+- [Themes](#themes)
 - [Streaming modes](#streaming-modes)
 - [Active protection](#active-protection)
 - [Security rules](#security-rules)
@@ -55,7 +60,7 @@ npm install -g agenttop
 Run `agenttop` in one terminal while running Claude Code sessions in other tabs.
 
 ```
--- agenttop v0.3.0 ---- 3 sessions ---- 14:32:08 ---------------------
+-- agenttop v0.6.0 ---- 3 sessions ---- 14:32:08 ---------------------
 | SESSIONS                 | ACTIVITY (cuddly-wiggling-sundae)           |
 |                          |                                             |
 | > cuddly-wiggling-sundae | 14:32:05 Bash    ls /tmp/claude-0/         |
@@ -117,9 +122,30 @@ Nicknames are stored in `~/.config/agenttop/config.json`.
 
 ## Session filtering
 
-Press `/` to open the filter input. Type to filter sessions by slug, nickname, project, or model. Case-insensitive substring match.
+Press `/` to open the filter input. The filter applies to whichever panel is focused:
 
-Press `Esc` to clear the filter.
+- **Sessions panel** — filters by slug, nickname, project, or model
+- **Activity panel** — filters by tool name or tool input content
+
+Case-insensitive substring match. Press `Esc` to clear the filter.
+
+## Session management
+
+### Archive
+
+Press `a` to archive a session. Archived sessions are hidden from the main view but not deleted.
+
+Press `A` to toggle the archive view, which shows only archived sessions. In the archive view, press `a` to restore a session back to the main view.
+
+Archive expiry can be configured in settings (`s`) under GENERAL — options are never, 7d, 14d, 30d, 60d, or 90d. Expired archives are purged on launch.
+
+### Delete
+
+Press `d` to delete a session. A confirmation prompt appears. On confirm, the session's output files are removed from disk and any nickname or archive entry is cleared.
+
+### Active/inactive indicators
+
+Sessions with a running process are shown in green. Inactive sessions (no process) are shown in red.
 
 ## Session detail view
 
@@ -130,6 +156,39 @@ Press `Enter` on a session to open the detail view, which shows:
 - Full token usage breakdown with cache hit rate
 
 Press `Esc` or `Enter` to return to the activity feed.
+
+## Split view
+
+Press `x` to toggle split-screen mode. The right area splits into two independent activity panels, each pinned to a different session with its own scroll position and filter.
+
+When split mode is active:
+
+- **Pin sessions** — navigate to a session in the sidebar and press `1` to pin it to the left panel, or `2` for the right panel
+- **Navigate panels** — use `Tab` or left/right arrows to move focus between sidebar, left panel, and right panel
+- **Independent filtering** — press `/` to filter whichever panel is focused
+- **Swap panels** — press `S` to swap the left and right panels (sessions, scroll, filters)
+- **Close a panel** — press `X` to clear the focused panel's session. If both panels are empty, split mode exits automatically
+- **Detail view** — press `Enter` on a split panel to toggle the detail view for that panel
+
+Press `x` again to exit split mode and return to the single-panel layout.
+
+## Themes
+
+agenttop ships with 15 built-in colour themes and a full theme management system. Open Settings (`s`) and select **Manage themes...** to access the theme menu.
+
+Built-in themes: One Dark (default), Dracula, Monokai Pro, Solarized Dark, Solarized Light, Nord, Gruvbox Dark, Tokyo Night, Catppuccin Mocha, Catppuccin Latte, Rose Pine, Rose Pine Moon, Pastel Dark, Kanagawa, and Everforest.
+
+In the theme menu:
+
+- **Browse and preview** — navigate with up/down arrows. Each theme previews live as you select it
+- **Apply** — press `Enter` to set the selected theme as active
+- **Copy** — press `c` to create a custom theme based on the selected one
+- **Edit** — press `e` to edit a custom theme's colours (individual hex values)
+- **Rename** — press `r` to rename a custom theme
+- **Delete** — press `d` to delete a custom theme
+- **Restore default** — press `Backspace` to reset to One Dark
+
+Custom themes are saved to `~/.config/agenttop/config.json` and persist across sessions.
 
 ## Streaming modes
 
@@ -283,9 +342,22 @@ Config file at `~/.config/agenttop/config.json` (respects `XDG_CONFIG_HOME`):
     "nickname": "n",
     "clearNickname": "N",
     "detail": "enter",
-    "update": "u"
+    "update": "u",
+    "settings": "s",
+    "archive": "a",
+    "delete": "d",
+    "viewArchive": "A",
+    "split": "x",
+    "pinLeft": "1",
+    "pinRight": "2",
+    "swapPanels": "S",
+    "closePanel": "X"
   },
+  "theme": "one-dark",
+  "customThemes": {},
   "nicknames": {},
+  "archived": {},
+  "archiveExpiryDays": 0,
   "security": {
     "enabled": true,
     "rules": {
@@ -303,7 +375,9 @@ CLI flags override config values. Config is created with defaults on first run. 
 
 ## Keybindings
 
-All keybindings are configurable via `keybindings` in the config file. The footer bar updates to reflect your custom bindings.
+All keybindings are configurable via Settings (`s`). The footer bar updates to reflect your custom bindings.
+
+When rebinding a key, duplicate assignments are rejected with a toast notification — change the conflicting binding first. Press `Backspace` during rebind to reset a single key to its default, or use **Reset all keybindings** at the bottom of the keybindings section.
 
 Default keybindings:
 
@@ -313,11 +387,19 @@ Default keybindings:
 | `Tab` / left / right | Switch panel focus |
 | `Enter` | Open session detail view |
 | `Esc` | Close detail view / clear filter |
-| `/` | Filter sessions |
+| `/` | Filter active panel (sessions or activity) |
 | `n` | Set nickname for selected session |
 | `N` | Clear nickname |
+| `a` | Archive session (restore in archive view) |
+| `d` | Delete session (with confirmation) |
+| `A` | Toggle archive view |
+| `s` | Open settings |
 | `u` | Install available update |
 | `g` / `G` | Scroll to top / bottom of activity |
+| `x` | Toggle split view |
+| `1` / `2` | Pin session to left / right panel (split mode) |
+| `S` | Swap left and right panels (split mode) |
+| `X` | Close focused panel (split mode) |
 | `q` | Quit |
 
 ## How it works
