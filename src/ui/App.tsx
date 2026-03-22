@@ -411,7 +411,9 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
           totalSessions={sessions.length}
           sidebarWidth={sidebarWidth}
         />
-        {rightPanel}
+        <Box flexGrow={1} flexShrink={1} minWidth={0} overflow="hidden">
+          {rightPanel}
+        </Box>
       </Box>
       {!options.noSecurity && <AlertBar alerts={alerts} />}
       {inputMode === 'nickname' && (
