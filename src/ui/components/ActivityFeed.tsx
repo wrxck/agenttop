@@ -1,15 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text } from 'ink';
 
 import type { ToolCall } from '../../discovery/types.js';
-import { colors } from '../theme.js';
-import { getToolColor } from '../theme.js';
+import { colors, getToolColor } from '../theme.js';
 
 interface ActivityFeedProps {
   events: ToolCall[];
   sessionSlug: string | null;
   focused: boolean;
   height: number;
+  scrollOffset: number;
 }
 
 const formatTime = (ts: number): string => {
@@ -24,9 +24,7 @@ const summarizeInput = (call: ToolCall): string => {
     case 'Bash':
       return String(input.command || '').slice(0, 50);
     case 'Read':
-      return String(input.file_path || '').split('/').slice(-2).join('/');
     case 'Write':
-      return String(input.file_path || '').split('/').slice(-2).join('/');
     case 'Edit':
       return String(input.file_path || '').split('/').slice(-2).join('/');
     case 'Grep':
@@ -43,8 +41,16 @@ const summarizeInput = (call: ToolCall): string => {
   }
 };
 
-export const ActivityFeed: React.FC<ActivityFeedProps> = ({ events, sessionSlug, focused, height }) => {
-  const visible = events.slice(-(height - 2));
+export const ActivityFeed: React.FC<ActivityFeedProps> = ({ events, sessionSlug, focused, height, scrollOffset }) => {
+  const viewportRows = height - 2;
+  const totalEvents = events.length;
+  const start = Math.max(0, totalEvents - viewportRows - scrollOffset);
+  const end = start + viewportRows;
+  const visible = events.slice(start, end);
+
+  const isAtBottom = scrollOffset === 0;
+  const isAtTop = start === 0;
+  const canScroll = totalEvents > viewportRows;
 
   return (
     <Box
@@ -53,12 +59,19 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({ events, sessionSlug,
       borderStyle="single"
       borderColor={focused ? colors.primary : colors.border}
     >
-      <Box paddingX={1}>
-        <Text color={colors.header} bold>
-          ACTIVITY
-        </Text>
-        {sessionSlug && (
-          <Text color={colors.muted}> ({sessionSlug})</Text>
+      <Box paddingX={1} justifyContent="space-between">
+        <Box>
+          <Text color={colors.header} bold>
+            ACTIVITY
+          </Text>
+          {sessionSlug && (
+            <Text color={colors.muted}> ({sessionSlug})</Text>
+          )}
+        </Box>
+        {focused && canScroll && !isAtBottom && (
+          <Text color={colors.muted}>
+            [{totalEvents - end + viewportRows}/{totalEvents}]
+          </Text>
         )}
       </Box>
 
@@ -79,6 +92,14 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = ({ events, sessionSlug,
           <Text color={colors.text}> {summarizeInput(event)}</Text>
         </Box>
       ))}
+
+      {focused && canScroll && !isAtTop && visible.length > 0 && (
+        <Box paddingX={1} justifyContent="flex-end">
+          <Text color={colors.muted}>
+            {isAtBottom ? '' : 'G:bottom '}
+          </Text>
+        </Box>
+      )}
     </Box>
   );
 };
