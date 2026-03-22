@@ -336,6 +336,18 @@ const PRESETS: PresetTuple[] = [
     '#7FBBB3',
     '#DBBC7F', '#E69875',
   ],
+  ['hi-feline', '#FF6B8A', '#FFB3C6', '#FF1744', '#FFE082', '#FF5252', '#FF0000', '#C48B9F', '#FFE4EC', '#FFFFFF', '#4A2030', '#3A1525', '#FF6B8A', '#FFE082', '#FFA726'],
+  ['plumber-bros', '#4CAF50', '#F44336', '#2196F3', '#FFD700', '#FF5722', '#FF0000', '#795548', '#EFEBE9', '#FFFFFF', '#1B5E20', '#0D3010', '#4CAF50', '#FFD700', '#FF9800'],
+  ['hedgehog-speed', '#1565C0', '#FFD700', '#4CAF50', '#FFEB3B', '#F44336', '#FF0000', '#5C6BC0', '#E8EAF6', '#FFFFFF', '#0D47A1', '#0A2E6E', '#1565C0', '#FFEB3B', '#FF9800'],
+  ['block-craft', '#4CAF50', '#8D6E63', '#795548', '#FFEB3B', '#F44336', '#FF0000', '#78909C', '#BCAAA4', '#FFFFFF', '#33691E', '#1B4400', '#4CAF50', '#FFEB3B', '#FF9800'],
+  ['galaxy-conflicts', '#F44336', '#2196F3', '#9C27B0', '#FFD54F', '#FF1744', '#FF0000', '#546E7A', '#ECEFF1', '#FFFFFF', '#1A1A2E', '#0D0D1A', '#F44336', '#FFD54F', '#FF6D00'],
+  ['pocket-creatures', '#F44336', '#FFFFFF', '#FFEB3B', '#FFC107', '#E53935', '#FF0000', '#90A4AE', '#ECEFF1', '#FFFFFF', '#B71C1C', '#7F0000', '#F44336', '#FFC107', '#FF9800'],
+  ['brick-wizard', '#7B1FA2', '#FFD700', '#880E4F', '#FFC107', '#F44336', '#FF0000', '#6A1B9A', '#E1BEE7', '#FFFFFF', '#311B92', '#1A0A52', '#7B1FA2', '#FFC107', '#FF9800'],
+  ['caped-knight', '#616161', '#FDD835', '#424242', '#FFC107', '#F44336', '#FF0000', '#757575', '#E0E0E0', '#FFFFFF', '#212121', '#0A0A0A', '#616161', '#FFC107', '#FF9800'],
+  ['web-crawler', '#F44336', '#1565C0', '#FFFFFF', '#FFEB3B', '#D50000', '#FF0000', '#78909C', '#E3F2FD', '#FFFFFF', '#B71C1C', '#7F0000', '#F44336', '#FFEB3B', '#FF9800'],
+  ['frozen-kingdom', '#81D4FA', '#CE93D8', '#B3E5FC', '#FFF9C4', '#EF9A9A', '#FF0000', '#90CAF9', '#E1F5FE', '#FFFFFF', '#1A237E', '#0D1252', '#81D4FA', '#FFF9C4', '#FFCC80'],
+  ['coral-reef', '#FF7043', '#29B6F6', '#AB47BC', '#FFEE58', '#EF5350', '#FF0000', '#4DB6AC', '#E0F7FA', '#FFFFFF', '#BF360C', '#7F2008', '#FF7043', '#FFEE58', '#FFA726'],
+  ['toy-ranch', '#8D6E63', '#7CB342', '#7E57C2', '#FFEE58', '#EF5350', '#FF0000', '#90A4AE', '#EFEBE9', '#FFFFFF', '#4E342E', '#2E1C15', '#8D6E63', '#FFEE58', '#FFA726'],
 ];
 
 export const BUILTIN_THEMES: ThemeDefinition[] = PRESETS.map(fromTuple);
