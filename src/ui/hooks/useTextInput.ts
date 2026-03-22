@@ -12,7 +12,7 @@ export interface TextInputState {
   ) => boolean;
 }
 
-export const useTextInput = (onConfirm?: (value: string) => void): TextInputState => {
+export const useTextInput = (onConfirm?: (value: string) => void, onCancel?: () => void): TextInputState => {
   const [value, setValue] = useState('');
   const [isActive, setIsActive] = useState(false);
 
@@ -24,7 +24,8 @@ export const useTextInput = (onConfirm?: (value: string) => void): TextInputStat
   const cancel = useCallback(() => {
     setValue('');
     setIsActive(false);
-  }, []);
+    onCancel?.();
+  }, [onCancel]);
 
   const confirm = useCallback(() => {
     const result = value;
@@ -49,7 +50,13 @@ export const useTextInput = (onConfirm?: (value: string) => void): TextInputStat
       }
 
       if (key.backspace || key.delete) {
-        setValue((v) => v.slice(0, -1));
+        setValue((v) => {
+          if (v.length === 0) {
+            cancel();
+            return v;
+          }
+          return v.slice(0, -1);
+        });
         return true;
       }
 
