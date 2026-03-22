@@ -1,7 +1,7 @@
 import { useInput } from 'ink';
 
 import type { KeybindingsConfig } from '../../config/store.js';
-import type { Session } from '../../discovery/types.js';
+import type { Session, SessionGroup } from '../../discovery/types.js';
 import type { TextInputState } from './useTextInput.js';
 import type { Panel } from '../App.js';
 
@@ -26,6 +26,8 @@ export interface KeyHandlerDeps {
   rightShowDetail: boolean;
   confirmAction: unknown;
   selectedSession: Session | null;
+  selectedGroup: SessionGroup | null;
+  toggleExpand: (groupKey: string) => void;
   leftSession: Session | null;
   rightSession: Session | null;
   leftScroll: number;
@@ -180,6 +182,11 @@ export const useKeyHandler = (deps: KeyHandlerDeps): void => {
         d.resetPanel('right');
         if (!d.leftSession) d.clearSplitState();
       }
+      return;
+    }
+
+    if (matchKey(d.kb.detail, input, key) && d.activePanel === 'sessions' && d.selectedGroup) {
+      d.toggleExpand(d.selectedGroup.key);
       return;
     }
 

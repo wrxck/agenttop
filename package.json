@@ -1,6 +1,6 @@
 {
   "name": "agenttop",
-  "version": "0.8.3",
+  "version": "0.9.0",
   "description": "Real-time terminal dashboard for monitoring AI coding agent sessions — like htop for agents",
   "type": "module",
   "bin": {
@@ -39,7 +39,7 @@
   "bugs": {
     "url": "https://github.com/wrxck/agenttop/issues"
   },
-"author": "Matt Hesketh <matt@heskethwebdesign.co.uk>",
+  "author": "Matt Hesketh <matt@heskethwebdesign.co.uk>",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.27.1",

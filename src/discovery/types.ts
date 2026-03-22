@@ -88,6 +88,24 @@ export interface Alert {
   timestamp: number;
 }
 
+export interface SessionGroup {
+  key: string;
+  sessions: Session[];
+  expanded: boolean;
+  // aggregated fields for group header
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  latestModel: string;
+  isActive: boolean;
+  latestActivity: number;
+  earliestStart: number;
+}
+
+export type VisibleItem =
+  | { type: 'group'; group: SessionGroup }
+  | { type: 'session'; session: Session; groupKey: string }
+  | { type: 'ungrouped'; session: Session };
+
 export interface ProcessInfo {
   pid: number;
   cpu: number;

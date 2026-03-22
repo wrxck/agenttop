@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 
-import type { ToolCall } from '../../discovery/types.js';
+import type { ToolCall, Session } from '../../discovery/types.js';
 import { colors, getToolColor } from '../theme.js';
 
 interface ActivityFeedProps {
@@ -13,7 +13,14 @@ interface ActivityFeedProps {
   height: number;
   scrollOffset: number;
   filter?: string;
+  merged?: boolean;
+  mergedSessions?: Session[];
 }
+
+const TAG_COLORS = [
+  '#61AFEF', '#98C379', '#C678DD', '#E5C07B', '#E06C75',
+  '#56B6C2', '#D19A66', '#BE5046',
+];
 
 const formatTime = (ts: number): string => {
   const d = new Date(ts);
@@ -48,7 +55,7 @@ const summarizeInput = (call: ToolCall): string => {
 };
 
 export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
-  ({ events, sessionSlug, sessionId, isActive, focused, height, scrollOffset, filter }) => {
+  ({ events, sessionSlug, sessionId, isActive, focused, height, scrollOffset, filter, merged, mergedSessions }) => {
     const viewportRows = height - 2;
     const totalEvents = events.length;
     const start = Math.max(0, totalEvents - viewportRows - scrollOffset);
@@ -58,6 +65,13 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
     const isAtBottom = scrollOffset === 0;
     const isAtTop = start === 0;
     const canScroll = totalEvents > viewportRows;
+
+    const slugColorMap = new Map<string, string>();
+    if (merged && mergedSessions) {
+      mergedSessions.forEach((s, i) => {
+        slugColorMap.set(s.sessionId, TAG_COLORS[i % TAG_COLORS.length]);
+      });
+    }
 
     return (
       <Box
@@ -72,6 +86,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
               ACTIVITY
             </Text>
             {sessionSlug && <Text color={colors.muted}> ({sessionSlug})</Text>}
+            {merged && <Text color={colors.accent}> [merged]</Text>}
             {filter && (
               <Text color={colors.muted}> [{filter.length > 10 ? filter.slice(0, 9) + '\u2026' : filter}]</Text>
             )}
@@ -86,20 +101,28 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
         {visible.length === 0 && (
           <Box paddingX={1} paddingY={1}>
             <Text color={colors.muted} italic>
-              {sessionSlug ? 'Waiting for activity...' : 'Select a session'}
+              {sessionSlug || merged ? 'Waiting for activity...' : 'Select a session'}
             </Text>
           </Box>
         )}
 
-        {visible.map((event, i) => (
-          <Box key={`${event.timestamp}-${i}`} paddingX={1}>
-            <Text color={colors.muted}>{formatTime(event.timestamp)} </Text>
-            <Text color={getToolColor(event.toolName)} bold>
-              {event.toolName.padEnd(8)}
-            </Text>
-            <Text color={colors.text}> {summarizeInput(event)}</Text>
-          </Box>
-        ))}
+        {visible.map((event, i) => {
+          const tag = merged ? event.slug.slice(0, 4) : null;
+          const tagColor = merged ? (slugColorMap.get(event.sessionId) || colors.muted) : undefined;
+
+          return (
+            <Box key={`${event.timestamp}-${i}`} paddingX={1}>
+              {tag && (
+                <Text color={tagColor}>{tag.padEnd(5)}</Text>
+              )}
+              <Text color={colors.muted}>{formatTime(event.timestamp)} </Text>
+              <Text color={getToolColor(event.toolName)} bold>
+                {event.toolName.padEnd(8)}
+              </Text>
+              <Text color={colors.text}> {summarizeInput(event)}</Text>
+            </Box>
+          );
+        })}
 
         {focused && canScroll && !isAtTop && visible.length > 0 && (
           <Box paddingX={1} justifyContent="flex-end">
@@ -107,12 +130,25 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
           </Box>
         )}
 
-        {sessionId && isActive === false && (
+        {!merged && sessionId && isActive === false && (
           <Box paddingX={1} flexDirection="column">
             <Text color={colors.muted}> </Text>
             <Text color={colors.muted}>
               resume: <Text color={colors.text}>claude --resume {sessionId}</Text>
             </Text>
+          </Box>
+        )}
+
+        {merged && mergedSessions && mergedSessions.some((s) => s.pid === null) && (
+          <Box paddingX={1} flexDirection="column">
+            <Text color={colors.muted}> </Text>
+            {mergedSessions
+              .filter((s) => s.pid === null)
+              .map((s) => (
+                <Text key={s.sessionId} color={colors.muted}>
+                  resume {s.slug.slice(0, 8)}: <Text color={colors.text}>claude --resume {s.sessionId}</Text>
+                </Text>
+              ))}
           </Box>
         )}
       </Box>
