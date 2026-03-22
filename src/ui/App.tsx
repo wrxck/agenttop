@@ -15,6 +15,7 @@ import { AlertBar } from './components/AlertBar.js';
 import { SessionDetail } from './components/SessionDetail.js';
 import { SetupModal } from './components/SetupModal.js';
 import { FooterBar } from './components/FooterBar.js';
+import { SettingsMenu } from './components/SettingsMenu.js';
 import { useSessions } from './hooks/useSessions.js';
 import { useActivityStream } from './hooks/useActivityStream.js';
 import { useAlerts } from './hooks/useAlerts.js';
@@ -38,11 +39,12 @@ const matchKey = (binding: string, input: string, key: Record<string, unknown>):
   return input === binding;
 };
 
-export const App: React.FC<AppProps> = ({ options, config, version, firstRun }) => {
+export const App: React.FC<AppProps> = ({ options, config: initialConfig, version, firstRun }) => {
   const { exit } = useApp();
   const { stdout } = useStdout();
   const termHeight = stdout?.rows ?? 40;
-  const kb = config.keybindings;
+  const [liveConfig, setLiveConfig] = useState(initialConfig);
+  const kb = liveConfig.keybindings;
 
   const [activePanel, setActivePanel] = useState<Panel>('sessions');
   const [activityScroll, setActivityScroll] = useState(0);
@@ -52,25 +54,38 @@ export const App: React.FC<AppProps> = ({ options, config, version, firstRun }) 
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [updateStatus, setUpdateStatus] = useState('');
   const [showDetail, setShowDetail] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
-  const { sessions, selectedSession, selectedIndex, selectNext, selectPrev } = useSessions(
+  const { sessions, selectedSession, selectedIndex, selectNext, selectPrev, refresh } = useSessions(
     options.allUsers,
     filter || undefined,
   );
   const events = useActivityStream(selectedSession, options.allUsers);
-  const { alerts } = useAlerts(!options.noSecurity, options.alertLevel, options.allUsers, config);
+  const { alerts } = useAlerts(!options.noSecurity, options.alertLevel, options.allUsers, liveConfig);
 
-  const nicknameInput = useTextInput((value) => {
-    if (selectedSession && value.trim()) setNickname(selectedSession.sessionId, value.trim());
-    setInputMode('normal');
-  });
-  const filterInput = useTextInput((value) => {
-    setFilter(value);
-    setInputMode('normal');
-  });
+  const nicknameInput = useTextInput(
+    (value) => {
+      if (selectedSession && value.trim()) {
+        setNickname(selectedSession.sessionId, value.trim());
+        refresh();
+      }
+      setInputMode('normal');
+    },
+    () => setInputMode('normal'),
+  );
+  const filterInput = useTextInput(
+    (value) => {
+      setFilter(value);
+      setInputMode('normal');
+    },
+    () => {
+      setFilter('');
+      setInputMode('normal');
+    },
+  );
 
   useEffect(() => {
-    if (options.noUpdates || !config.updates.checkOnLaunch) return;
+    if (options.noUpdates || !liveConfig.updates.checkOnLaunch) return;
     try {
       const i = checkForUpdate();
       if (i.available) setUpdateInfo(i);
@@ -84,7 +99,7 @@ export const App: React.FC<AppProps> = ({ options, config, version, firstRun }) 
       } catch {
         /* */
       }
-    }, config.updates.checkInterval);
+    }, liveConfig.updates.checkInterval);
     return () => clearInterval(iv);
   }, []);
 
@@ -97,9 +112,15 @@ export const App: React.FC<AppProps> = ({ options, config, version, firstRun }) 
     setActivityScroll(0);
   }, [selectedSession?.sessionId]);
 
+  const handleSettingsClose = useCallback((updatedConfig: Config) => {
+    setLiveConfig(updatedConfig);
+    saveConfig(updatedConfig);
+    setShowSettings(false);
+  }, []);
+
   const handleSetupComplete = useCallback(
     (results: Array<'yes' | 'not_now' | 'dismiss'>) => {
-      const nc = { ...config };
+      const nc = { ...liveConfig };
       const [hc, mc] = results;
       if (hc === 'yes') {
         try {
@@ -120,7 +141,7 @@ export const App: React.FC<AppProps> = ({ options, config, version, firstRun }) 
       saveConfig(nc);
       setShowSetup(false);
     },
-    [config],
+    [liveConfig],
   );
 
   const switchPanel = useCallback((_dir: 'next' | 'prev') => {
@@ -128,7 +149,7 @@ export const App: React.FC<AppProps> = ({ options, config, version, firstRun }) 
   }, []);
 
   useInput((input, key) => {
-    if (showSetup) return;
+    if (showSetup || showSettings) return;
 
     if (inputMode === 'nickname') {
       nicknameInput.handleInput(input, key);
@@ -178,6 +199,7 @@ export const App: React.FC<AppProps> = ({ options, config, version, firstRun }) 
     }
     if (matchKey(kb.clearNickname, input, key) && selectedSession) {
       clearNickname(selectedSession.sessionId);
+      refresh();
       return;
     }
     if (matchKey(kb.filter, input, key)) {
@@ -187,6 +209,10 @@ export const App: React.FC<AppProps> = ({ options, config, version, firstRun }) 
     }
     if (key.escape && filter) {
       setFilter('');
+      return;
+    }
+    if (matchKey(kb.settings, input, key)) {
+      setShowSettings(true);
       return;
     }
     if (matchKey(kb.update, input, key) && updateInfo?.available) {
@@ -211,12 +237,12 @@ export const App: React.FC<AppProps> = ({ options, config, version, firstRun }) 
 
   if (showSetup) {
     const steps = [];
-    if (config.prompts.hook === 'pending')
+    if (liveConfig.prompts.hook === 'pending')
       steps.push({
         title: 'Install Claude Code hook?',
         description: 'Adds a PostToolUse hook that blocks prompt injection attempts in real-time.',
       });
-    if (config.prompts.mcp === 'pending')
+    if (liveConfig.prompts.mcp === 'pending')
       steps.push({
         title: 'Install MCP server?',
         description: 'Registers agenttop as an MCP server so Claude Code can query session status and alerts.',
@@ -226,6 +252,10 @@ export const App: React.FC<AppProps> = ({ options, config, version, firstRun }) 
       return null;
     }
     return <SetupModal steps={steps} onComplete={handleSetupComplete} />;
+  }
+
+  if (showSettings) {
+    return <SettingsMenu config={liveConfig} onClose={handleSettingsClose} />;
   }
 
   const rightPanel =
