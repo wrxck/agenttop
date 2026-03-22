@@ -24,14 +24,15 @@ export const getTaskDirs = (allUsers: boolean): string[] => {
   const tmp = getTmpDir();
   const uid = getUid();
 
-  if (allUsers && isRoot()) {
+  if (allUsers) {
     try {
-      return readdirSync(tmp)
+      const dirs = readdirSync(tmp)
         .filter((d: string) => d.startsWith('claude-'))
         .filter((d: string) => !d.endsWith('-cwd'))
         .map((d: string) => join(tmp, d));
+      if (dirs.length > 0) return dirs;
     } catch {
-      return [join(tmp, `claude-${uid}`)];
+      // fall through to default
     }
   }
 
