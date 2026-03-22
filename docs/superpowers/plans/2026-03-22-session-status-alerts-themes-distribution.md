@@ -31,7 +31,7 @@
 | `src/discovery/types.ts` | Add `SessionStatus` type, `status` field on `Session`, replace `isActive` with `status` on `SessionGroup` |
 | `src/discovery/sessions.ts` | Add `readTailBytes()`, `detectStatus()`, update sort logic |
 | `src/discovery/sessionsAsync.ts` | Add async `readTailBytesAsync()`, `detectStatusAsync()`, update sort logic |
-| `src/config/store.ts` | Extend `AlertsConfig` with `staleTimeout`, `staleAlertSeverity`, `custom[]`; add `alertRules` keybinding to `KeybindingsConfig` |
+| `src/config/store.ts` | Extend `AlertsConfig` with `staleTimeout`, `staleAlertSeverity`, `custom[]`; add `alertRules`/`pin`/`pinMoveUp`/`pinMoveDown` keybindings; add `pinnedSessions` to Config |
 | `src/config/themes.ts` | Add `waiting`/`stale` to `ThemeColors`, update `PresetTuple`, `fromTuple`, `COLOR_KEYS`; add 12 bootleg themes |
 | `src/analysis/security.ts` | Accept custom rules in constructor, register as `SecurityEventRule`s |
 | `src/ui/components/SessionList.tsx` | Use `session.status` for indicators/colours instead of `pid !== null` |
@@ -1510,7 +1510,239 @@ git commit -m "feat(stream): add session status to streaming output"
 
 ---
 
-## Task 13: Package Distribution Files
+## Task 13: Pinned Sessions
+
+**Files:**
+- Modify: `src/config/store.ts` (add `pinnedSessions` to Config, add pin keybindings)
+- Modify: `src/discovery/types.ts` (add `pinned` field to Session)
+- Modify: `src/discovery/sessions.ts` (update sort to account for pinning)
+- Modify: `src/discovery/sessionsAsync.ts` (same sort update)
+- Modify: `src/ui/components/SessionList.tsx` (pin indicator)
+- Modify: `src/ui/hooks/useKeyHandler.ts` (pin/reorder keybindings)
+- Modify: `src/ui/App.tsx` (pin state management)
+- Modify: `src/mcp/server.ts` (pin/unpin tools)
+
+- [ ] **Step 1: Add pinnedSessions to Config**
+
+In `src/config/store.ts`, add to the `Config` interface:
+
+```typescript
+pinnedSessions: string[];  // ordered array of session IDs
+```
+
+Add to `defaultConfig()`:
+
+```typescript
+pinnedSessions: [],
+```
+
+Add to `KeybindingsConfig`:
+
+```typescript
+pin: string;
+pinMoveUp: string;
+pinMoveDown: string;
+```
+
+Add to keybindings defaults:
+
+```typescript
+pin: 'p',
+pinMoveUp: 'P',
+pinMoveDown: 'ctrl+p',
+```
+
+Add helper functions:
+
+```typescript
+export const pinSession = (sessionId: string): void => {
+  const config = loadConfig();
+  if (!config.pinnedSessions.includes(sessionId)) {
+    config.pinnedSessions.push(sessionId);
+    saveConfig(config);
+  }
+};
+
+export const unpinSession = (sessionId: string): void => {
+  const config = loadConfig();
+  config.pinnedSessions = config.pinnedSessions.filter((id) => id !== sessionId);
+  saveConfig(config);
+};
+
+export const movePinned = (sessionId: string, direction: 'up' | 'down'): void => {
+  const config = loadConfig();
+  const idx = config.pinnedSessions.indexOf(sessionId);
+  if (idx === -1) return;
+  const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (newIdx < 0 || newIdx >= config.pinnedSessions.length) return;
+  config.pinnedSessions.splice(idx, 1);
+  config.pinnedSessions.splice(newIdx, 0, sessionId);
+  saveConfig(config);
+};
+
+export const getPinnedSessions = (): string[] => loadConfig().pinnedSessions;
+```
+
+- [ ] **Step 2: Add pinned field to Session type**
+
+In `src/discovery/types.ts`, add to Session:
+
+```typescript
+pinned: boolean;
+```
+
+- [ ] **Step 3: Update sort logic in sessions.ts**
+
+Replace the sort in `discoverSessions()` to account for pinning:
+
+```typescript
+import { loadConfig } from '../config/store.js';
+
+// In discoverSessions, after building sessionMap:
+const config = loadConfig();
+const pinnedOrder = config.pinnedSessions ?? [];
+
+// Set pinned flag on each session
+for (const session of sessionMap.values()) {
+  session.pinned = pinnedOrder.includes(session.sessionId);
+}
+
+return Array.from(sessionMap.values()).sort((a, b) => {
+  const aPin = pinnedOrder.indexOf(a.sessionId);
+  const bPin = pinnedOrder.indexOf(b.sessionId);
+  const aIsPinned = aPin !== -1;
+  const bIsPinned = bPin !== -1;
+
+  if (aIsPinned && !bIsPinned) return -1;
+  if (!aIsPinned && bIsPinned) return 1;
+  if (aIsPinned && bIsPinned) return aPin - bPin;
+
+  const aPri = STATUS_PRIORITY[a.status];
+  const bPri = STATUS_PRIORITY[b.status];
+  if (aPri !== bPri) return aPri - bPri;
+  return b.lastActivity - a.lastActivity;
+});
+```
+
+Apply the same sort to `sessionsAsync.ts`.
+
+- [ ] **Step 4: Add pin indicator to SessionList**
+
+In `SessionList.tsx`, for each session display, add a pin marker before the status dot:
+
+```typescript
+const pinMarker = session.pinned ? '* ' : '  ';
+// In the Text component:
+{pinMarker}<Text color={dotColor}>{statusDot}</Text> {displayName}
+```
+
+For groups, show pin marker if any member is pinned:
+
+```typescript
+const groupPinned = g.sessions.some(s => s.pinned);
+const pinMarker = groupPinned ? '* ' : '  ';
+```
+
+- [ ] **Step 5: Add pin keybindings to useKeyHandler**
+
+Add `matchKey(d.kb.pin, ...)` check near the nickname key handler:
+
+```typescript
+if (matchKey(d.kb.pin, input, key) && d.selectedSession) {
+  d.onTogglePin(d.selectedSession.sessionId);
+  return;
+}
+if (matchKey(d.kb.pinMoveUp, input, key) && d.selectedSession?.pinned) {
+  d.onMovePinned(d.selectedSession.sessionId, 'up');
+  return;
+}
+if (matchKey(d.kb.pinMoveDown, input, key) && d.selectedSession?.pinned) {
+  d.onMovePinned(d.selectedSession.sessionId, 'down');
+  return;
+}
+```
+
+Add `onTogglePin` and `onMovePinned` to `KeyHandlerDeps`.
+
+- [ ] **Step 6: Wire pin actions in App.tsx**
+
+Add handlers:
+
+```typescript
+const handleTogglePin = useCallback((sessionId: string) => {
+  const pinned = getPinnedSessions();
+  if (pinned.includes(sessionId)) unpinSession(sessionId);
+  else pinSession(sessionId);
+  refresh();
+}, [refresh]);
+
+const handleMovePinned = useCallback((sessionId: string, dir: 'up' | 'down') => {
+  movePinned(sessionId, dir);
+  refresh();
+}, [refresh]);
+```
+
+Pass to useKeyHandler deps.
+
+- [ ] **Step 7: Add MCP pin/unpin tools**
+
+In `src/mcp/server.ts`, add two new tools:
+
+```typescript
+{
+  name: 'agenttop_pin_session',
+  description: 'Pin a session to the top of the session list',
+  inputSchema: {
+    type: 'object' as const,
+    properties: { sessionId: { type: 'string', description: 'Session ID to pin' } },
+    required: ['sessionId'],
+  },
+},
+{
+  name: 'agenttop_unpin_session',
+  description: 'Unpin a session',
+  inputSchema: {
+    type: 'object' as const,
+    properties: { sessionId: { type: 'string', description: 'Session ID to unpin' } },
+    required: ['sessionId'],
+  },
+},
+```
+
+Add handler cases:
+
+```typescript
+case 'agenttop_pin_session': {
+  const sid = args?.sessionId as string;
+  pinSession(sid);
+  return { content: [{ type: 'text', text: `Session ${sid} pinned` }] };
+}
+case 'agenttop_unpin_session': {
+  const sid = args?.sessionId as string;
+  unpinSession(sid);
+  return { content: [{ type: 'text', text: `Session ${sid} unpinned` }] };
+}
+```
+
+Add `pinned: boolean` to `agenttop_sessions` response.
+
+Import `pinSession`, `unpinSession` from `../config/store.js`.
+
+- [ ] **Step 8: Build and test**
+
+Run: `npm run build && npx vitest run`
+Expected: Clean build, all tests pass.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add src/config/store.ts src/discovery/types.ts src/discovery/sessions.ts src/discovery/sessionsAsync.ts src/ui/components/SessionList.tsx src/ui/hooks/useKeyHandler.ts src/ui/App.tsx src/mcp/server.ts
+git commit -m "feat(ui): add session pinning with reordering, pin indicator, and MCP tools"
+```
+
+---
+
+## Task 14: Package Distribution Files (renumbered)
 
 **Files:**
 - Create: `snap/snapcraft.yaml`
@@ -1797,7 +2029,12 @@ Add new fields to the config JSON example.
 
 - [ ] **Step 7: Update keybindings table**
 
-Add: `| r | Open alert rules menu |`
+Add:
+```
+| r | Open alert rules menu |
+| p | Toggle pin on selected session |
+| P | Move pinned session up |
+```
 
 - [ ] **Step 8: Update table of contents**
 

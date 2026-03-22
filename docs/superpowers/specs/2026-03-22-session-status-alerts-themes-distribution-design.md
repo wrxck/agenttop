@@ -5,14 +5,15 @@
 
 ## Overview
 
-Six feature areas:
+Seven feature areas:
 
 1. **Session status detection** — waiting-for-input and stale detection with UI indicators and sort priority
-2. **Custom alerts with regex** — user-defined alert rules with TUI management
-3. **Bootleg pop culture themes** — new creative themes with a disclaimer
-4. **MCP server extensions** — new tools for status, alerts, and alert management
-5. **Package manager distribution** — Homebrew, Winget, Scoop, AUR, Nix, Snap
-6. **Documentation updates** — README and CONTRIBUTING updated for all new features
+2. **Pinned sessions** — pin sessions to top with reordering, pin icon indicator
+3. **Custom alerts with regex** — user-defined alert rules with TUI management
+4. **Bootleg pop culture themes** — new creative themes with a disclaimer
+5. **MCP server extensions** — new tools for status, alerts, pinning, and alert management
+6. **Package manager distribution** — Homebrew, Winget, Scoop, AUR, Nix, Snap
+7. **Documentation updates** — README and CONTRIBUTING updated for all new features
 
 ## 1. Session Status Detection
 
@@ -55,12 +56,95 @@ Opens file, seeks to `max(0, fileSize - bytes)`, reads to end, returns string. U
 ### Sort Priority
 
 ```
-waiting (by lastActivity desc) > stale (by lastActivity desc) > active (by lastActivity desc) > inactive (by lastActivity desc)
+pinned (user-defined order) > non-pinned waiting (by lastActivity desc) > non-pinned stale (by lastActivity desc) > non-pinned active (by lastActivity desc) > non-pinned inactive (by lastActivity desc)
 ```
 
-Replaces the current sort logic in `sessions.ts` (lines 305-310) and `sessionsAsync.ts` (lines 237-243) which sorts by `pid !== null` then `lastActivity`. The new sort assigns a numeric priority to each status (waiting=0, stale=1, active=2, inactive=3) and sorts by priority first, then lastActivity descending.
+Pinned sessions always appear at the top in their user-defined order, regardless of status. Within pinned sessions, the user controls the order via reordering keybindings. Non-pinned sessions sort by status priority (waiting=0, stale=1, active=2, inactive=3), then by lastActivity descending.
 
-Groups sort by the highest-priority status of any member.
+Exception: a pinned session that is `waiting` still shows the `[waiting]` indicator and yellow colour — the pin just controls position, not the status display.
+
+Groups sort by the highest-priority status of any member (pinning is per-session, not per-group).
+
+## 1b. Pinned Sessions
+
+### Concept
+
+Users can pin sessions to keep them visible at the top of the session list. Pinned sessions:
+- Always appear above non-pinned sessions
+- Maintain a user-defined order (reorderable)
+- Show a pin icon (📌 or `*`) next to the status dot
+- Persist across restarts via config
+
+### Configuration
+
+New field in `Config`:
+
+```typescript
+pinnedSessions: string[];  // ordered array of session IDs
+```
+
+Default: `[]` (empty array).
+
+### Keybindings
+
+| Key | Action |
+|-----|--------|
+| `p` | Toggle pin on selected session |
+| `P` (shift+p) | Move pinned session up in pin order |
+| `ctrl+p` | Move pinned session down in pin order |
+
+New entries in `KeybindingsConfig`:
+
+```typescript
+pin: string;        // default: 'p'
+pinMoveUp: string;  // default: 'P'
+pinMoveDown: string; // default: (implementation decides — could be ctrl+p or another key)
+```
+
+### UI Indicators
+
+In `SessionList.tsx`, pinned sessions display a pin marker before the status dot:
+
+```
+* ● my-session [waiting]
+  ● other-session
+```
+
+The `*` (or similar compact marker) indicates pinned. The status dot and tags still display normally.
+
+### Sort Implementation
+
+The sort in `discoverSessions` and `discoverSessionsAsync` checks pinned status first:
+
+```typescript
+const pinnedOrder = config.pinnedSessions;
+
+sessions.sort((a, b) => {
+  const aPin = pinnedOrder.indexOf(a.sessionId);
+  const bPin = pinnedOrder.indexOf(b.sessionId);
+  const aIsPinned = aPin !== -1;
+  const bIsPinned = bPin !== -1;
+
+  // pinned before non-pinned
+  if (aIsPinned && !bIsPinned) return -1;
+  if (!aIsPinned && bIsPinned) return 1;
+
+  // both pinned: user-defined order
+  if (aIsPinned && bIsPinned) return aPin - bPin;
+
+  // both non-pinned: status priority, then lastActivity
+  const aPri = STATUS_PRIORITY[a.status];
+  const bPri = STATUS_PRIORITY[b.status];
+  if (aPri !== bPri) return aPri - bPri;
+  return b.lastActivity - a.lastActivity;
+});
+```
+
+### MCP Extensions
+
+- `agenttop_pin_session` — pin a session (adds to end of pinned list)
+- `agenttop_unpin_session` — unpin a session
+- `agenttop_sessions` — response now includes `pinned: boolean` field
 
 ### Type Changes
 
