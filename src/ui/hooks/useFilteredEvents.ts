@@ -7,8 +7,7 @@ const applyFilter = (events: ActivityEvent[], filter: string): ActivityEvent[] =
   const lower = filter.toLowerCase();
   return events.filter(
     (e) =>
-      e.call.toolName.toLowerCase().includes(lower) ||
-      JSON.stringify(e.call.toolInput).toLowerCase().includes(lower),
+      e.call.toolName.toLowerCase().includes(lower) || JSON.stringify(e.call.toolInput).toLowerCase().includes(lower),
   );
 };
 

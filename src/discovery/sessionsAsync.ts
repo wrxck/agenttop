@@ -3,12 +3,7 @@ import { join, basename } from 'node:path';
 
 import { getTaskDirs, getProjectsDirs } from '../config.js';
 import type { Session, ProcessInfo, TokenUsage } from './types.js';
-import {
-  setCachedSessions,
-  isRefreshInFlight,
-  setRefreshInFlight,
-  pruneFileMetaCache,
-} from './cache.js';
+import { setCachedSessions, isRefreshInFlight, setRefreshInFlight, pruneFileMetaCache } from './cache.js';
 import {
   normalisePath,
   getClaudeProcessesAsync,
@@ -143,9 +138,7 @@ const discoverFromTmpAsync = async (
       for (const tDir of tasksPaths) {
         let outputFiles: string[];
         try {
-          outputFiles = (await readdir(tDir))
-            .filter((f) => f.endsWith('.output'))
-            .map((f) => join(tDir, f));
+          outputFiles = (await readdir(tDir)).filter((f) => f.endsWith('.output')).map((f) => join(tDir, f));
         } catch {
           continue;
         }

@@ -2,15 +2,10 @@ import type { CLIOptions, ToolCall, SecurityEvent, TokenUsage } from './discover
 import { discoverSessions } from './discovery/sessions.js';
 import { Watcher } from './ingestion/watcher.js';
 import { SecurityEngine } from './analysis/security.js';
+import { formatTokens } from './ui/format.js';
 
 const write = (msg: string): void => {
   process.stdout.write(msg + '\n');
-};
-
-const formatTokens = (n: number): string => {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
-  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'k';
-  return String(n);
 };
 
 export const runStreamMode = (options: CLIOptions, isJson: boolean): void => {

@@ -8,6 +8,7 @@ export const colors: Record<string, string> = {
   warning: '#E5C07B',
   error: '#E06C75',
   critical: '#FF0000',
+  success: '#98C379',
   muted: '#5C6370',
   text: '#ABB2BF',
   bright: '#FFFFFF',
@@ -39,6 +40,7 @@ export const getToolColor = (toolName: string): string => toolColors[toolName] |
 
 export const applyTheme = (theme: ThemeDefinition): void => {
   Object.assign(colors, theme.colors);
+  colors.success = theme.colors.secondary;
   Object.assign(toolColors, theme.toolColors);
   Object.assign(severityColors, deriveSeverityColors(theme.colors));
 };

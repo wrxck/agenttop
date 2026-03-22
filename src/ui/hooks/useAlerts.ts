@@ -49,7 +49,7 @@ export const useAlerts = (enabled: boolean, alertLevel: AlertSeverity, allUsers:
       watcherRef.current = null;
       loggerRef.current = null;
     };
-  }, [enabled, alertLevel, allUsers]);
+  }, [enabled, alertLevel, allUsers, config]);
 
   const clearAlerts = () => setAlerts([]);
 

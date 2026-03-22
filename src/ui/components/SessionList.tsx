@@ -3,6 +3,7 @@ import { Box, Text } from 'ink';
 
 import type { VisibleItem } from '../../discovery/types.js';
 import { colors } from '../theme.js';
+import { formatTokens, formatModelShort as formatModel } from '../format.js';
 
 interface SessionListProps {
   visibleItems: VisibleItem[];
@@ -14,19 +15,6 @@ interface SessionListProps {
   totalSessions: number;
   sidebarWidth?: number;
 }
-
-const formatModel = (model: string): string => {
-  if (model.includes('opus')) return 'opus';
-  if (model.includes('sonnet')) return 'son';
-  if (model.includes('haiku')) return 'hai';
-  return model.slice(0, 4);
-};
-
-const formatTokens = (n: number): string => {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
-  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'k';
-  return String(n);
-};
 
 const truncate = (s: string, max: number): string => (s.length > max ? s.slice(0, max - 1) + '\u2026' : s);
 

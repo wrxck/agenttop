@@ -3,16 +3,12 @@ import { Box, Text } from 'ink';
 
 import type { Alert } from '../../discovery/types.js';
 import { colors, severityColors } from '../theme.js';
+import { formatTime } from '../format.js';
 
 interface AlertBarProps {
   alerts: Alert[];
   maxVisible?: number;
 }
-
-const formatTime = (ts: number): string => {
-  const d = new Date(ts);
-  return d.toLocaleTimeString('en-GB', { hour12: false });
-};
 
 const severityIcon: Record<string, string> = {
   info: 'i',

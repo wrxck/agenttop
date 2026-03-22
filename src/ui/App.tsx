@@ -15,7 +15,7 @@ import {
   saveConfig,
 } from '../config/store.js';
 import { resolveTheme } from '../config/themes.js';
-import { installUpdate } from '../updates.js';
+import { installUpdate, restartProcess } from '../updates.js';
 import { StatusBar } from './components/StatusBar.js';
 import { SessionList } from './components/SessionList.js';
 import { ActivityFeed } from './components/ActivityFeed.js';
@@ -29,6 +29,7 @@ import { ThemeMenu } from './components/ThemeMenu.js';
 import { ThemePickerModal } from './components/ThemePickerModal.js';
 import { GuidedTour } from './components/GuidedTour.js';
 import { ConfirmModal } from './components/ConfirmModal.js';
+import { UpdateModal } from './components/UpdateModal.js';
 import { SplitPanel } from './components/SplitPanel.js';
 import { useSessions } from './hooks/useSessions.js';
 import { useActivityStream } from './hooks/useActivityStream.js';
@@ -74,6 +75,7 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
   const [sidebarWidth, setSidebarWidth] = useState(() => initialConfig.sidebarWidth ?? 30);
   const [selectedEventIndex, setSelectedEventIndex] = useState(0);
   const [showEventDetail, setShowEventDetail] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
 
   const refreshArchived = useCallback(() => setArchivedIds(new Set(Object.keys(getArchived()))), []);
 
@@ -97,6 +99,12 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
   useEffect(() => {
     applyTheme(resolveTheme(setup.liveConfig.theme, setup.liveConfig.customThemes));
   }, [setup.liveConfig.theme, setup.liveConfig.customThemes]);
+
+  useEffect(() => {
+    if (updateInfo?.available && setup.liveConfig.prompts.autoUpdate === 'pending') {
+      setShowUpdateModal(true);
+    }
+  }, [updateInfo?.available, setup.liveConfig.prompts.autoUpdate]);
 
   const {
     sessions,
@@ -159,7 +167,7 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
   // auto-scroll activity viewport to keep cursor visible
   useEffect(() => {
     const totalEvents = events.length;
-    const vRows = (termHeight - 3 - (options.noSecurity ? 0 : 6) - 1 - (inputMode !== 'normal' ? 1 : 0)) - 2;
+    const vRows = termHeight - 3 - (options.noSecurity ? 0 : 6) - 1 - (inputMode !== 'normal' ? 1 : 0) - 2;
     if (vRows <= 0 || totalEvents === 0) return;
     const start = Math.max(0, totalEvents - vRows - activityScroll);
     const end = start + vRows;
@@ -209,6 +217,7 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
     leftShowDetail: split.leftShowDetail,
     rightShowDetail: split.rightShowDetail,
     confirmAction,
+    showUpdateModal,
     selectedSession,
     selectedGroup,
     toggleExpand,
@@ -260,10 +269,6 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
     setSidebarWidth: persistSidebarWidth,
     nicknameInput,
     filterInput,
-    onNickname: (id) => {
-      clearNickname(id);
-      refresh();
-    },
     onClearNickname: (id) => {
       clearNickname(id);
       refresh();
@@ -296,7 +301,10 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
     onUpdate: () => {
       setUpdateStatus('updating...');
       installUpdate()
-        .then(() => setUpdateStatus(`updated to v${updateInfo?.latest} — restart to apply`))
+        .then(() => {
+          setUpdateStatus(`updated to v${updateInfo?.latest} — restarting...`);
+          setTimeout(() => restartProcess(), 500);
+        })
         .catch(() => setUpdateStatus('update failed'));
     },
   });
@@ -344,6 +352,24 @@ export const App: React.FC<AppProps> = ({ options, config: initialConfig, versio
         onOpenThemeMenu={setup.handleOpenThemeMenu}
       />
     );
+  if (showUpdateModal && updateInfo?.available) {
+    return (
+      <Box flexDirection="column" height={termHeight} justifyContent="center" alignItems="center">
+        <UpdateModal
+          current={updateInfo.current}
+          latest={updateInfo.latest}
+          onNotNow={() => setShowUpdateModal(false)}
+          onDontAskAgain={() => {
+            const cfg = loadConfig();
+            cfg.prompts.autoUpdate = 'dismissed';
+            saveConfig(cfg);
+            setup.setLiveConfig(cfg);
+            setShowUpdateModal(false);
+          }}
+        />
+      </Box>
+    );
+  }
   if (confirmAction) {
     return (
       <Box flexDirection="column" height={termHeight} justifyContent="center" alignItems="center">

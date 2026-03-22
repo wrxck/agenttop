@@ -3,18 +3,13 @@ import { Box, Text } from 'ink';
 
 import type { Session } from '../../discovery/types.js';
 import { colors } from '../theme.js';
+import { formatTokens, formatModel } from '../format.js';
 
 interface SessionDetailProps {
   session: Session;
   focused: boolean;
   height: number;
 }
-
-const formatTokens = (n: number): string => {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
-  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'k';
-  return String(n);
-};
 
 const formatUptime = (startTime: number): string => {
   const ms = Date.now() - startTime;
@@ -24,13 +19,6 @@ const formatUptime = (startTime: number): string => {
   if (hours > 0) return `${hours}h ${mins % 60}m`;
   if (mins > 0) return `${mins}m ${secs % 60}s`;
   return `${secs}s`;
-};
-
-const formatModel = (model: string): string => {
-  if (model.includes('opus')) return 'opus';
-  if (model.includes('sonnet')) return 'sonnet';
-  if (model.includes('haiku')) return 'haiku';
-  return model.slice(0, 20);
 };
 
 export const SessionDetail: React.FC<SessionDetailProps> = React.memo(({ session, focused }) => {

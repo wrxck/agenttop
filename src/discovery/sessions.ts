@@ -10,7 +10,10 @@ export const getClaudeProcesses = (): ProcessInfo[] => {
     const output = execSync('ps aux', { encoding: 'utf-8', timeout: 5000 });
     const procs = output
       .split('\n')
-      .filter((line) => line.includes('/claude') && !line.includes('grep') && !line.includes('agenttop'))
+      .filter(
+        (line) =>
+          (line.includes('/claude') || /\bclaude\b/.test(line)) && !line.includes('grep') && !line.includes('agenttop'),
+      )
       .map((line) => {
         const parts = line.trim().split(/\s+/);
         const pid = parseInt(parts[1], 10);

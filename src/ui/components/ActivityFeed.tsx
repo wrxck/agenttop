@@ -3,6 +3,7 @@ import { Box, Text } from 'ink';
 
 import type { ActivityEvent, Session } from '../../discovery/types.js';
 import { colors, getToolColor } from '../theme.js';
+import { formatTime } from '../format.js';
 
 interface ActivityFeedProps {
   events: ActivityEvent[];
@@ -19,11 +20,6 @@ interface ActivityFeedProps {
 }
 
 const TAG_COLORS = ['#61AFEF', '#98C379', '#C678DD', '#E5C07B', '#E06C75', '#56B6C2', '#D19A66', '#BE5046'];
-
-const formatTime = (ts: number): string => {
-  const d = new Date(ts);
-  return d.toLocaleTimeString('en-GB', { hour12: false });
-};
 
 const summarizeInput = (call: ActivityEvent['call']): string => {
   const input = call.toolInput;
@@ -134,8 +130,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
                 {tag && <Text color={tagColor}>{tag.padEnd(5)}</Text>}
                 <Text color={isSelected ? colors.bright : colors.muted} underline={isSelected}>
                   {formatTime(call.timestamp)}
-                </Text>
-                {' '}
+                </Text>{' '}
                 <Text color={getToolColor(call.toolName)} bold underline={isSelected}>
                   {call.toolName.padEnd(8)}
                 </Text>

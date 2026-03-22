@@ -29,7 +29,7 @@ export const useUpdateChecker = (
       cancelled = true;
       clearInterval(iv);
     };
-  }, []);
+  }, [disabled, checkOnLaunch, checkInterval]);
 
   return updateInfo;
 };

@@ -3,31 +3,13 @@ import { Box, Text, useInput } from 'ink';
 
 import type { ActivityEvent } from '../../discovery/types.js';
 import { colors, getToolColor } from '../theme.js';
+import { formatTime } from '../format.js';
 
 interface ToolCallDetailProps {
   event: ActivityEvent;
   focused: boolean;
   height: number;
 }
-
-const formatTime = (ts: number): string => {
-  const d = new Date(ts);
-  return d.toLocaleTimeString('en-GB', { hour12: false });
-};
-
-const wrapLines = (text: string, maxWidth: number): string[] => {
-  const lines: string[] = [];
-  for (const line of text.split('\n')) {
-    if (line.length <= maxWidth) {
-      lines.push(line);
-    } else {
-      for (let i = 0; i < line.length; i += maxWidth) {
-        lines.push(line.slice(i, i + maxWidth));
-      }
-    }
-  }
-  return lines;
-};
 
 const renderBash = (event: ActivityEvent): string[] => {
   const lines: string[] = [];

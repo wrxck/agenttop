@@ -1,4 +1,4 @@
-import { execFile, exec } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -49,7 +49,7 @@ export const checkForUpdate = (): Promise<UpdateInfo> =>
 export const installUpdate = (): Promise<string> => {
   const npm = getNpmPath();
   return new Promise((resolve, reject) => {
-    exec(`${npm} install -g agenttop@latest`, { timeout: 60000 }, (err, stdout) => {
+    execFile(npm, ['install', '-g', 'agenttop@latest'], { timeout: 60000 }, (err, stdout) => {
       if (err) {
         reject(err);
       } else {
@@ -59,7 +59,16 @@ export const installUpdate = (): Promise<string> => {
   });
 };
 
-const compareVersions = (a: string, b: string): number => {
+export const restartProcess = (): void => {
+  const child = spawn(process.argv[0]!, process.argv.slice(1), {
+    detached: true,
+    stdio: 'inherit',
+  });
+  child.unref();
+  process.exit(0);
+};
+
+export const compareVersions = (a: string, b: string): number => {
   const pa = a.split('.').map(Number);
   const pb = b.split('.').map(Number);
   for (let i = 0; i < 3; i++) {

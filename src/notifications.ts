@@ -1,4 +1,4 @@
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { platform } from 'node:os';
 
 import type { Alert, AlertSeverity } from './discovery/types.js';
@@ -31,11 +31,13 @@ export const notify = (alert: Alert, config: NotificationsConfig): void => {
 
     const os = platform();
     if (os === 'linux') {
-      exec(`notify-send ${JSON.stringify(title)} ${JSON.stringify(body)}`, { timeout: 3000 });
+      execFile('notify-send', [title, body], { timeout: 3000 });
     } else if (os === 'darwin') {
-      exec(`osascript -e 'display notification ${JSON.stringify(body)} with title ${JSON.stringify(title)}'`, {
-        timeout: 3000,
-      });
+      execFile(
+        'osascript',
+        ['-e', `display notification ${JSON.stringify(body)} with title ${JSON.stringify(title)}`],
+        { timeout: 3000 },
+      );
     }
   }
 };

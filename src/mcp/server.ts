@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
@@ -9,6 +13,17 @@ import { Watcher } from '../ingestion/watcher.js';
 
 const MAX_ALERTS = 100;
 const MAX_ACTIVITY = 200;
+
+const getVersion = (): string => {
+  try {
+    const thisFile = fileURLToPath(import.meta.url);
+    const pkgPath = join(dirname(thisFile), '..', 'package.json');
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+    return pkg.version || '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+};
 
 export const startMcpServer = async (allUsers: boolean, noSecurity: boolean): Promise<void> => {
   const alerts: Alert[] = [];
@@ -38,7 +53,7 @@ export const startMcpServer = async (allUsers: boolean, noSecurity: boolean): Pr
   watcher.start();
 
   const server = new Server(
-    { name: 'agenttop', version: '0.3.0' },
+    { name: 'agenttop', version: getVersion() },
     {
       capabilities: { tools: {} },
     },

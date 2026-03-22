@@ -17,7 +17,8 @@ export const getClaudeProcessesAsync = async (): Promise<ProcessInfo[]> => {
 
   const procs: ProcessInfo[] = [];
   for (const line of stdout.split('\n')) {
-    if (!line.includes('/claude') || line.includes('grep') || line.includes('agenttop')) continue;
+    if ((!line.includes('/claude') && !/\bclaude\b/.test(line)) || line.includes('grep') || line.includes('agenttop'))
+      continue;
     const parts = line.trim().split(/\s+/);
     const pid = parseInt(parts[1], 10);
     if (isNaN(pid)) continue;
@@ -148,9 +149,7 @@ export const readFirstEventAsync = async (filePath: string): Promise<Record<stri
   }
 };
 
-export const findModelAndUsageAsync = async (
-  filePath: string,
-): Promise<{ model: string; usage: TokenUsage }> => {
+export const findModelAndUsageAsync = async (filePath: string): Promise<{ model: string; usage: TokenUsage }> => {
   let fstat;
   try {
     fstat = await stat(filePath);

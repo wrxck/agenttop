@@ -1,16 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-const compareVersions = (a: string, b: string): number => {
-  const pa = a.split('.').map(Number);
-  const pb = b.split('.').map(Number);
-  for (let i = 0; i < 3; i++) {
-    const da = pa[i] ?? 0;
-    const db = pb[i] ?? 0;
-    if (da > db) return 1;
-    if (da < db) return -1;
-  }
-  return 0;
-};
+import { compareVersions } from '../src/updates.js';
 
 describe('version comparison', () => {
   it('detects newer version', () => {
@@ -27,5 +17,10 @@ describe('version comparison', () => {
   it('detects equal versions', () => {
     expect(compareVersions('1.0.0', '1.0.0')).toBe(0);
     expect(compareVersions('0.3.0', '0.3.0')).toBe(0);
+  });
+
+  it('handles missing segments', () => {
+    expect(compareVersions('1.0', '1.0.0')).toBe(0);
+    expect(compareVersions('1.0.0', '1')).toBe(0);
   });
 });

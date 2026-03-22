@@ -44,6 +44,7 @@ export interface KeyHandlerDeps {
   rightMaxScroll: number;
   activityEventCount: number;
   selectedEventIndex: number;
+  showUpdateModal: boolean;
   updateInfo: { available: boolean; latest?: string } | null;
 
   exit: () => void;
@@ -81,7 +82,6 @@ export interface KeyHandlerDeps {
   nicknameInput: TextInputState;
   filterInput: TextInputState;
 
-  onNickname: (sessionId: string) => void;
   onClearNickname: (sessionId: string) => void;
   onArchive: (sessionId: string) => void;
   onUnarchive: (sessionId: string) => void;
@@ -93,7 +93,7 @@ export const useKeyHandler = (deps: KeyHandlerDeps): void => {
   const d = deps;
 
   useInput((input, key) => {
-    if (d.showSetup || d.showSettings || d.confirmAction) return;
+    if (d.showSetup || d.showSettings || d.confirmAction || d.showUpdateModal) return;
 
     if (d.inputMode === 'nickname') {
       d.nicknameInput.handleInput(input, key);

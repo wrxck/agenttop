@@ -58,7 +58,7 @@ export const useActivityStream = (session: Session | Session[] | null, allUsers:
     const resultHandler = (newResults: ToolResult[]) => {
       const matched = newResults.filter((r) => sessionIdSet.has(r.sessionId));
       if (matched.length === 0) return;
-      setResults((prev) => [...prev, ...matched]);
+      setResults((prev) => [...prev, ...matched].slice(-MAX_EVENTS * 2));
     };
 
     const watcher = new Watcher(callHandler, allUsers, undefined, undefined, resultHandler);
