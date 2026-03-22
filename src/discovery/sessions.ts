@@ -2,7 +2,9 @@ import { readdirSync, statSync, openSync, readSync, closeSync } from 'node:fs';
 import { join, basename } from 'node:path';
 
 import { getTaskDirs, getProjectsDirs } from '../config.js';
-import type { Session, ProcessInfo, TokenUsage } from './types.js';
+import type { Session, ProcessInfo, TokenUsage, SessionStatus } from './types.js';
+import { STATUS_PRIORITY } from './types.js';
+import { loadConfig } from '../config/store.js';
 import { getClaudeProcesses } from './platform.js';
 
 export { getClaudeProcesses };
@@ -17,6 +19,45 @@ const readFirstLines = (filePath: string, bytes: number): string[] => {
   } catch {
     return [];
   }
+};
+
+export const readTailBytes = (filePath: string, bytes: number): string => {
+  try {
+    const fd = openSync(filePath, 'r');
+    const fstat = statSync(filePath);
+    const start = Math.max(0, fstat.size - bytes);
+    const readSize = Math.min(bytes, fstat.size);
+    const buf = Buffer.alloc(readSize);
+    readSync(fd, buf, 0, readSize, start);
+    closeSync(fd);
+    return buf.toString('utf-8');
+  } catch {
+    return '';
+  }
+};
+
+const detectStatus = (filePath: string, hasPid: boolean, lastActivity: number, staleTimeout: number): SessionStatus => {
+  if (!hasPid) return 'inactive';
+  const tail = readTailBytes(filePath, 4096);
+  const lines = tail.split('\n').filter(Boolean);
+  if (lines.length > 0) {
+    try {
+      const lastEvent = JSON.parse(lines[lines.length - 1]);
+      if (lastEvent.type === 'assistant') {
+        const content = lastEvent.message?.content;
+        if (Array.isArray(content)) {
+          const hasAskUser = content.some(
+            (b: { type?: string; name?: string }) => b.type === 'tool_use' && b.name === 'AskUserQuestion',
+          );
+          if (hasAskUser) return 'waiting';
+          const hasToolUse = content.some((b: { type?: string }) => b.type === 'tool_use');
+          if (!hasToolUse) return 'waiting';
+        }
+      }
+    } catch { /* malformed */ }
+  }
+  if (Date.now() - lastActivity > staleTimeout * 1000) return 'stale';
+  return 'active';
 };
 
 const readFirstEvent = (filePath: string): Record<string, unknown> | null => {
@@ -94,7 +135,7 @@ const extractSessionMeta = (
   return { sessionId, cwd, version, gitBranch, model, usage };
 };
 
-const discoverFromProjects = (allUsers: boolean, processes: ProcessInfo[], sessionMap: Map<string, Session>): void => {
+const discoverFromProjects = (allUsers: boolean, processes: ProcessInfo[], sessionMap: Map<string, Session>, staleTimeout: number, pinnedOrder: string[]): void => {
   const projectsDirs = getProjectsDirs(allUsers);
 
   for (const projectsDir of projectsDirs) {
@@ -155,6 +196,8 @@ const discoverFromProjects = (allUsers: boolean, processes: ProcessInfo[], sessi
           startTime: fstat.birthtimeMs || fstat.ctimeMs,
           lastActivity: fstat.mtimeMs,
           usage: meta.usage,
+          status: detectStatus(filePath, matchingProcess !== undefined, fstat.mtimeMs, staleTimeout),
+          pinned: pinnedOrder.includes(meta.sessionId),
         };
 
         sessionMap.set(meta.sessionId, session);
@@ -163,7 +206,7 @@ const discoverFromProjects = (allUsers: boolean, processes: ProcessInfo[], sessi
   }
 };
 
-const discoverFromTmp = (allUsers: boolean, processes: ProcessInfo[], sessionMap: Map<string, Session>): void => {
+const discoverFromTmp = (allUsers: boolean, processes: ProcessInfo[], sessionMap: Map<string, Session>, staleTimeout: number, pinnedOrder: string[]): void => {
   const taskDirs = getTaskDirs(allUsers);
 
   for (const taskDir of taskDirs) {
@@ -269,6 +312,10 @@ const discoverFromTmp = (allUsers: boolean, processes: ProcessInfo[], sessionMap
         const normCwd = normalisePath(cwd);
         const matchingProcess = processes.find((p) => p.cwd && normalisePath(p.cwd) === normCwd);
 
+        const latestFile = outputFiles.reduce((a, b) => {
+          try { return statSync(a).mtimeMs > statSync(b).mtimeMs ? a : b; } catch { return a; }
+        });
+
         const session: Session = {
           sessionId,
           slug: slug || sessionId.slice(0, 12),
@@ -287,6 +334,8 @@ const discoverFromTmp = (allUsers: boolean, processes: ProcessInfo[], sessionMap
           startTime: startTime === Infinity ? Date.now() : startTime,
           lastActivity,
           usage: totalUsage,
+          status: detectStatus(latestFile, matchingProcess !== undefined, lastActivity, staleTimeout),
+          pinned: pinnedOrder.includes(sessionId),
         };
 
         sessionMap.set(sessionId || projectName, session);
@@ -296,16 +345,26 @@ const discoverFromTmp = (allUsers: boolean, processes: ProcessInfo[], sessionMap
 };
 
 export const discoverSessions = (allUsers: boolean): Session[] => {
+  const config = loadConfig();
+  const staleTimeout = config.alerts.staleTimeout ?? 60;
+  const pinnedOrder = config.pinnedSessions ?? [];
   const processes = getClaudeProcesses();
   const sessionMap = new Map<string, Session>();
 
-  discoverFromProjects(allUsers, processes, sessionMap);
-  discoverFromTmp(allUsers, processes, sessionMap);
+  discoverFromProjects(allUsers, processes, sessionMap, staleTimeout, pinnedOrder);
+  discoverFromTmp(allUsers, processes, sessionMap, staleTimeout, pinnedOrder);
 
   return Array.from(sessionMap.values()).sort((a, b) => {
-    const aActive = a.pid !== null ? 1 : 0;
-    const bActive = b.pid !== null ? 1 : 0;
-    if (aActive !== bActive) return bActive - aActive;
+    const aPin = pinnedOrder.indexOf(a.sessionId);
+    const bPin = pinnedOrder.indexOf(b.sessionId);
+    const aIsPinned = aPin !== -1;
+    const bIsPinned = bPin !== -1;
+    if (aIsPinned && !bIsPinned) return -1;
+    if (!aIsPinned && bIsPinned) return 1;
+    if (aIsPinned && bIsPinned) return aPin - bPin;
+    const aPri = STATUS_PRIORITY[a.status];
+    const bPri = STATUS_PRIORITY[b.status];
+    if (aPri !== bPri) return aPri - bPri;
     return b.lastActivity - a.lastActivity;
   });
 };

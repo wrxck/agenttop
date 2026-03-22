@@ -34,6 +34,7 @@ export interface Session {
   usage: TokenUsage;
   nickname?: string;
   status: SessionStatus;
+  pinned: boolean;
 }
 
 export interface ToolCall {
