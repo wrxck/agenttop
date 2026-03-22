@@ -28,12 +28,15 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = React.memo(({ theme, onSa
   const [inputValue, setInputValue] = useState('');
 
   const currentTarget = ALL_KEYS[selectedIdx];
-  const getCurrentValue = (t: EditTarget): string =>
-    t.group === 'colors' ? editColors[t.key] : editToolColors[t.key];
+  const getCurrentValue = (t: EditTarget): string => (t.group === 'colors' ? editColors[t.key] : editToolColors[t.key]);
 
   useInput((input, key) => {
     if (editing) {
-      if (key.escape) { setEditing(false); setInputValue(''); return; }
+      if (key.escape) {
+        setEditing(false);
+        setInputValue('');
+        return;
+      }
       if (key.return) {
         const val = inputValue.startsWith('#') ? inputValue : `#${inputValue}`;
         if (isValidHex(val)) {
@@ -47,16 +50,28 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = React.memo(({ theme, onSa
         setInputValue('');
         return;
       }
-      if (key.backspace || key.delete) { setInputValue((v) => v.slice(0, -1)); return; }
+      if (key.backspace || key.delete) {
+        setInputValue((v) => v.slice(0, -1));
+        return;
+      }
       if (input && input.length === 1 && /[0-9A-Fa-f#]/.test(input)) {
         setInputValue((v) => v + input);
       }
       return;
     }
 
-    if (key.escape) { onCancel(); return; }
-    if (key.upArrow) { setSelectedIdx((i) => Math.max(0, i - 1)); return; }
-    if (key.downArrow) { setSelectedIdx((i) => Math.min(ALL_KEYS.length - 1, i + 1)); return; }
+    if (key.escape) {
+      onCancel();
+      return;
+    }
+    if (key.upArrow) {
+      setSelectedIdx((i) => Math.max(0, i - 1));
+      return;
+    }
+    if (key.downArrow) {
+      setSelectedIdx((i) => Math.min(ALL_KEYS.length - 1, i + 1));
+      return;
+    }
 
     if (key.return) {
       setEditing(true);
@@ -72,12 +87,17 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = React.memo(({ theme, onSa
   return (
     <Box flexDirection="column" paddingX={2} paddingY={1}>
       <Box justifyContent="space-between" marginBottom={1}>
-        <Text color={colors.header} bold>EDIT THEME: {theme.name}</Text>
+        <Text color={colors.header} bold>
+          EDIT THEME: {theme.name}
+        </Text>
         <Text color={colors.muted}>enter:edit s:save esc:cancel</Text>
       </Box>
 
       <Box marginBottom={1}>
-        <Text color={colors.accent} bold>  COLORS</Text>
+        <Text color={colors.accent} bold>
+          {' '}
+          COLORS
+        </Text>
       </Box>
       {COLOR_KEYS.map((k, i) => {
         const isSelected = selectedIdx === i;
@@ -86,7 +106,7 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = React.memo(({ theme, onSa
         return (
           <Box key={k}>
             <Text color={isSelected ? colors.primary : colors.text}>
-              {isSelected ? '> ' : '  '}  {k.padEnd(12)}
+              {isSelected ? '> ' : '  '} {k.padEnd(12)}
             </Text>
             <Text color={value}>{isEditingThis ? inputValue + '_' : value}</Text>
             <Text color={value}> {'\u2588\u2588'}</Text>
@@ -95,7 +115,10 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = React.memo(({ theme, onSa
       })}
 
       <Box marginTop={1} marginBottom={1}>
-        <Text color={colors.accent} bold>  TOOL COLORS</Text>
+        <Text color={colors.accent} bold>
+          {' '}
+          TOOL COLORS
+        </Text>
       </Box>
       {TOOL_COLOR_KEYS.map((k, i) => {
         const realIdx = COLOR_KEYS.length + i;
@@ -105,7 +128,7 @@ export const ThemeEditor: React.FC<ThemeEditorProps> = React.memo(({ theme, onSa
         return (
           <Box key={k}>
             <Text color={isSelected ? colors.primary : colors.text}>
-              {isSelected ? '> ' : '  '}  {k.padEnd(12)}
+              {isSelected ? '> ' : '  '} {k.padEnd(12)}
             </Text>
             <Text color={value}>{isEditingThis ? inputValue + '_' : value}</Text>
             <Text color={value}> {'\u2588\u2588'}</Text>

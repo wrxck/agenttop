@@ -22,26 +22,59 @@ interface MenuItem {
 }
 
 const KEYBIND_LABELS: Record<keyof KeybindingsConfig, string> = {
-  quit: 'Quit', navUp: 'Navigate up', navDown: 'Navigate down',
-  panelNext: 'Next panel', panelPrev: 'Previous panel',
-  scrollTop: 'Scroll to top', scrollBottom: 'Scroll to bottom',
-  filter: 'Filter', nickname: 'Set nickname', clearNickname: 'Clear nickname',
-  detail: 'Detail view', update: 'Install update', settings: 'Settings',
-  archive: 'Archive session', delete: 'Delete session', viewArchive: 'View archive',
-  split: 'Toggle split view', pinLeft: 'Pin to left panel', pinRight: 'Pin to right panel',
-  swapPanels: 'Swap panels', closePanel: 'Close panel',
+  quit: 'Quit',
+  navUp: 'Navigate up',
+  navDown: 'Navigate down',
+  panelNext: 'Next panel',
+  panelPrev: 'Previous panel',
+  scrollTop: 'Scroll to top',
+  scrollBottom: 'Scroll to bottom',
+  filter: 'Filter',
+  nickname: 'Set nickname',
+  clearNickname: 'Clear nickname',
+  detail: 'Detail view',
+  update: 'Install update',
+  settings: 'Settings',
+  archive: 'Archive session',
+  delete: 'Delete session',
+  viewArchive: 'View archive',
+  split: 'Toggle split view',
+  pinLeft: 'Pin to left panel',
+  pinRight: 'Pin to right panel',
+  swapPanels: 'Swap panels',
+  closePanel: 'Close panel',
 };
 
 const RULE_LABELS: Record<keyof SecurityRulesConfig, string> = {
-  network: 'Network detection', exfiltration: 'Exfiltration detection',
-  sensitiveFiles: 'Sensitive files', shellEscape: 'Shell escape', injection: 'Prompt injection',
+  network: 'Network detection',
+  exfiltration: 'Exfiltration detection',
+  sensitiveFiles: 'Sensitive files',
+  shellEscape: 'Shell escape',
+  injection: 'Prompt injection',
 };
 
 const DEFAULT_KEYBINDINGS: KeybindingsConfig = {
-  quit: 'q', navUp: 'k', navDown: 'j', panelNext: 'tab', panelPrev: 'shift+tab',
-  scrollTop: 'g', scrollBottom: 'G', filter: '/', nickname: 'n', clearNickname: 'N',
-  detail: 'enter', update: 'u', settings: 's', archive: 'a', delete: 'd', viewArchive: 'A',
-  split: 'x', pinLeft: '1', pinRight: '2', swapPanels: 'S', closePanel: 'X',
+  quit: 'q',
+  navUp: 'k',
+  navDown: 'j',
+  panelNext: 'tab',
+  panelPrev: 'shift+tab',
+  scrollTop: 'g',
+  scrollBottom: 'G',
+  filter: '/',
+  nickname: 'n',
+  clearNickname: 'N',
+  detail: 'enter',
+  update: 'u',
+  settings: 's',
+  archive: 'a',
+  delete: 'd',
+  viewArchive: 'A',
+  split: 'x',
+  pinLeft: '1',
+  pinRight: '2',
+  swapPanels: 'S',
+  closePanel: 'X',
 };
 
 const SEVERITY_OPTIONS: NotificationsConfig['minSeverity'][] = ['info', 'warn', 'high', 'critical'];
@@ -60,13 +93,20 @@ const buildMenuItems = (): MenuItem[] => {
 
   items.push({ type: 'header', label: 'THEMES', section: 'themes', getValue: () => '', key: undefined });
   items.push({
-    type: 'action', label: 'Manage themes...', section: 'themes', key: 'manageThemes',
-    getValue: (cfg) => cfg.theme, apply: undefined,
+    type: 'action',
+    label: 'Manage themes...',
+    section: 'themes',
+    key: 'manageThemes',
+    getValue: (cfg) => cfg.theme,
+    apply: undefined,
   });
 
   items.push({ type: 'header', label: 'GENERAL', section: 'general', getValue: () => '', key: undefined });
   items.push({
-    type: 'cycle', label: 'Archive expiry', section: 'general', key: 'archiveExpiryDays',
+    type: 'cycle',
+    label: 'Archive expiry',
+    section: 'general',
+    key: 'archiveExpiryDays',
     getValue: (cfg) => formatExpiry(cfg.archiveExpiryDays),
     apply: (cfg) => {
       const idx = ARCHIVE_EXPIRY_OPTIONS.indexOf(cfg.archiveExpiryDays);
@@ -78,43 +118,68 @@ const buildMenuItems = (): MenuItem[] => {
   for (const [k, label] of Object.entries(KEYBIND_LABELS)) {
     const kbKey = k as keyof KeybindingsConfig;
     items.push({
-      type: 'keybind', label, section: 'keybindings', key: kbKey,
+      type: 'keybind',
+      label,
+      section: 'keybindings',
+      key: kbKey,
       getValue: (cfg) => displayKey(cfg.keybindings[kbKey]),
       apply: (cfg, newValue) => ({ ...cfg, keybindings: { ...cfg.keybindings, [kbKey]: newValue } }),
     });
   }
   items.push({
-    type: 'action', label: 'Reset all keybindings', section: 'keybindings', key: 'resetAllKeybinds',
-    getValue: () => '', apply: (cfg) => ({ ...cfg, keybindings: { ...DEFAULT_KEYBINDINGS } }),
+    type: 'action',
+    label: 'Reset all keybindings',
+    section: 'keybindings',
+    key: 'resetAllKeybinds',
+    getValue: () => '',
+    apply: (cfg) => ({ ...cfg, keybindings: { ...DEFAULT_KEYBINDINGS } }),
   });
 
   items.push({ type: 'header', label: 'SECURITY RULES', section: 'security', getValue: () => '', key: undefined });
   for (const [k, label] of Object.entries(RULE_LABELS)) {
     const ruleKey = k as keyof SecurityRulesConfig;
     items.push({
-      type: 'toggle', label, section: 'security', key: ruleKey,
+      type: 'toggle',
+      label,
+      section: 'security',
+      key: ruleKey,
       getValue: (cfg) => (cfg.security.rules[ruleKey] ? 'ON' : 'OFF'),
-      apply: (cfg) => ({ ...cfg, security: { ...cfg.security, rules: { ...cfg.security.rules, [ruleKey]: !cfg.security.rules[ruleKey] } } }),
+      apply: (cfg) => ({
+        ...cfg,
+        security: { ...cfg.security, rules: { ...cfg.security.rules, [ruleKey]: !cfg.security.rules[ruleKey] } },
+      }),
     });
   }
 
   items.push({ type: 'header', label: 'NOTIFICATIONS', section: 'notifications', getValue: () => '', key: undefined });
   items.push({
-    type: 'toggle', label: 'Terminal bell', section: 'notifications', key: 'bell',
+    type: 'toggle',
+    label: 'Terminal bell',
+    section: 'notifications',
+    key: 'bell',
     getValue: (cfg) => (cfg.notifications.bell ? 'ON' : 'OFF'),
     apply: (cfg) => ({ ...cfg, notifications: { ...cfg.notifications, bell: !cfg.notifications.bell } }),
   });
   items.push({
-    type: 'toggle', label: 'Desktop notifications', section: 'notifications', key: 'desktop',
+    type: 'toggle',
+    label: 'Desktop notifications',
+    section: 'notifications',
+    key: 'desktop',
     getValue: (cfg) => (cfg.notifications.desktop ? 'ON' : 'OFF'),
     apply: (cfg) => ({ ...cfg, notifications: { ...cfg.notifications, desktop: !cfg.notifications.desktop } }),
   });
   items.push({
-    type: 'cycle', label: 'Minimum severity', section: 'notifications', key: 'minSeverity',
+    type: 'cycle',
+    label: 'Minimum severity',
+    section: 'notifications',
+    key: 'minSeverity',
     getValue: (cfg) => cfg.notifications.minSeverity,
     apply: (cfg) => {
       const idx = SEVERITY_OPTIONS.indexOf(cfg.notifications.minSeverity);
-      return { ...cfg, notifications: { ...cfg.notifications, minSeverity: SEVERITY_OPTIONS[(idx + 1) % SEVERITY_OPTIONS.length] } };
+      return {
+        ...cfg,
+        notifications: { ...cfg.notifications, minSeverity: SEVERITY_OPTIONS[(idx + 1) % SEVERITY_OPTIONS.length] },
+      };
     },
   });
 
@@ -139,7 +204,12 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = React.memo(({ config, o
     toastTimer.current = setTimeout(() => setToast(''), 2500);
   };
 
-  useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
+  useEffect(
+    () => () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    },
+    [],
+  );
 
   const selectedIndex = SELECTABLE_INDICES[selectablePos];
   const maxLabelLen = useMemo(
@@ -154,8 +224,10 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = React.memo(({ config, o
       if (key.tab && key.shift) newKey = 'shift+tab';
       else if (key.tab) newKey = 'tab';
       else if (key.return) newKey = 'enter';
-      else if (key.escape) { setRebinding(false); return; }
-      else if (key.backspace || key.delete) {
+      else if (key.escape) {
+        setRebinding(false);
+        return;
+      } else if (key.backspace || key.delete) {
         const kbKey = item.key as keyof KeybindingsConfig;
         const defaultVal = DEFAULT_KEYBINDINGS[kbKey];
         if (item.apply) setLocalConfig((c) => item.apply!(c, defaultVal));
@@ -166,9 +238,7 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = React.memo(({ config, o
       else return;
 
       const kbKey = item.key as keyof KeybindingsConfig;
-      const conflict = Object.entries(localConfig.keybindings).find(
-        ([k, v]) => k !== kbKey && v === newKey,
-      );
+      const conflict = Object.entries(localConfig.keybindings).find(([k, v]) => k !== kbKey && v === newKey);
       if (conflict) {
         const conflictLabel = KEYBIND_LABELS[conflict[0] as keyof KeybindingsConfig] || conflict[0];
         showToast(`'${displayKey(newKey)}' is already assigned to '${conflictLabel}'`);
@@ -181,13 +251,25 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = React.memo(({ config, o
       return;
     }
 
-    if (key.escape) { onClose(localConfig); return; }
-    if (key.upArrow) { setSelectablePos((p) => Math.max(0, p - 1)); return; }
-    if (key.downArrow) { setSelectablePos((p) => Math.min(SELECTABLE_INDICES.length - 1, p + 1)); return; }
+    if (key.escape) {
+      onClose(localConfig);
+      return;
+    }
+    if (key.upArrow) {
+      setSelectablePos((p) => Math.max(0, p - 1));
+      return;
+    }
+    if (key.downArrow) {
+      setSelectablePos((p) => Math.min(SELECTABLE_INDICES.length - 1, p + 1));
+      return;
+    }
 
     if (key.return) {
       const item = MENU_ITEMS[selectedIndex];
-      if (item.key === 'manageThemes') { onOpenThemeMenu(); return; }
+      if (item.key === 'manageThemes') {
+        onOpenThemeMenu();
+        return;
+      }
       if (item.key === 'resetAllKeybinds') {
         if (item.apply) setLocalConfig((c) => item.apply!(c));
         showToast('All keybindings reset to defaults');
@@ -207,9 +289,18 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = React.memo(({ config, o
 
   return (
     <Box flexDirection="column" height={termHeight}>
-      <Box borderStyle="round" borderColor={colors.primary} flexDirection="column" paddingX={2} paddingY={1} height={termHeight}>
+      <Box
+        borderStyle="round"
+        borderColor={colors.primary}
+        flexDirection="column"
+        paddingX={2}
+        paddingY={1}
+        height={termHeight}
+      >
         <Box justifyContent="space-between" marginBottom={1}>
-          <Text color={colors.header} bold>SETTINGS</Text>
+          <Text color={colors.header} bold>
+            SETTINGS
+          </Text>
           <Text color={colors.muted}>esc to save &amp; close {rebinding ? '| backspace to reset' : ''}</Text>
         </Box>
 
@@ -219,7 +310,10 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = React.memo(({ config, o
           if (item.type === 'header') {
             return (
               <Box key={`h-${item.label}`} marginTop={realIndex > 0 ? 1 : 0}>
-                <Text color={colors.accent} bold>{'  '}{item.label}</Text>
+                <Text color={colors.accent} bold>
+                  {'  '}
+                  {item.label}
+                </Text>
               </Box>
             );
           }
@@ -227,13 +321,21 @@ export const SettingsMenu: React.FC<SettingsMenuProps> = React.memo(({ config, o
           const value = item.getValue(localConfig);
           const isRebindingThis = rebinding && isSelected;
           const displayValue = isRebindingThis ? '[press key...]' : value;
-          const valueColor = isRebindingThis ? colors.warning : value === 'ON' ? colors.secondary : value === 'OFF' ? colors.error : colors.bright;
+          const valueColor = isRebindingThis
+            ? colors.warning
+            : value === 'ON'
+              ? colors.secondary
+              : value === 'OFF'
+                ? colors.error
+                : colors.bright;
           const isReset = item.key === 'resetAllKeybinds';
           const dots = isReset ? '' : '.'.repeat(Math.max(2, maxLabelLen - item.label.length + 4)) + ' ';
 
           return (
             <Box key={`${item.section}-${item.key}`}>
-              <Text color={isSelected ? colors.primary : colors.text}>{isSelected ? '> ' : '  '}  {item.label} {dots}</Text>
+              <Text color={isSelected ? colors.primary : colors.text}>
+                {isSelected ? '> ' : '  '} {item.label} {dots}
+              </Text>
               {!isReset && <Text color={valueColor}>{displayValue}</Text>}
             </Box>
           );

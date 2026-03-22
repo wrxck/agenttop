@@ -105,7 +105,10 @@ export const useKeyHandler = (deps: KeyHandlerDeps): void => {
       return;
     }
 
-    if (matchKey(d.kb.quit, input, key)) { d.exit(); return; }
+    if (matchKey(d.kb.quit, input, key)) {
+      d.exit();
+      return;
+    }
 
     if (d.showDetail && !d.splitMode) {
       if (key.escape || key.return || key.leftArrow) d.setShowDetail(false);
@@ -115,7 +118,10 @@ export const useKeyHandler = (deps: KeyHandlerDeps): void => {
       if (key.escape || key.return) {
         if (d.activePanel === 'left') d.setLeftShowDetail(false);
         else if (d.activePanel === 'right') d.setRightShowDetail(false);
-        else { d.setLeftShowDetail(false); d.setRightShowDetail(false); }
+        else {
+          d.setLeftShowDetail(false);
+          d.setRightShowDetail(false);
+        }
         return;
       }
       if (key.leftArrow) {
@@ -179,8 +185,14 @@ export const useKeyHandler = (deps: KeyHandlerDeps): void => {
 
     if (matchKey(d.kb.detail, input, key) && d.selectedSession) {
       if (d.splitMode) {
-        if (d.activePanel === 'left') { d.setLeftShowDetail((v) => !v); return; }
-        if (d.activePanel === 'right') { d.setRightShowDetail((v) => !v); return; }
+        if (d.activePanel === 'left') {
+          d.setLeftShowDetail((v) => !v);
+          return;
+        }
+        if (d.activePanel === 'right') {
+          d.setRightShowDetail((v) => !v);
+          return;
+        }
         if (d.activePanel === 'sessions') {
           if (!d.leftSession) {
             d.setLeftSession(d.selectedSession);
@@ -199,8 +211,14 @@ export const useKeyHandler = (deps: KeyHandlerDeps): void => {
       }
     }
 
-    if (matchKey(d.kb.panelNext, input, key) || key.rightArrow) { d.switchPanel('next'); return; }
-    if (matchKey(d.kb.panelPrev, input, key) || key.leftArrow) { d.switchPanel('prev'); return; }
+    if (matchKey(d.kb.panelNext, input, key) || key.rightArrow) {
+      d.switchPanel('next');
+      return;
+    }
+    if (matchKey(d.kb.panelPrev, input, key) || key.leftArrow) {
+      d.switchPanel('prev');
+      return;
+    }
 
     if (matchKey(d.kb.nickname, input, key) && d.selectedSession) {
       d.setInputMode('nickname');
@@ -217,14 +235,32 @@ export const useKeyHandler = (deps: KeyHandlerDeps): void => {
       return;
     }
     if (key.escape) {
-      if (d.activePanel === 'sessions' && d.filter) { d.setFilter(''); return; }
-      if (d.activePanel === 'activity' && d.activityFilter) { d.setActivityFilter(''); return; }
-      if (d.activePanel === 'left' && d.leftFilter) { d.setLeftFilter(''); return; }
-      if (d.activePanel === 'right' && d.rightFilter) { d.setRightFilter(''); return; }
+      if (d.activePanel === 'sessions' && d.filter) {
+        d.setFilter('');
+        return;
+      }
+      if (d.activePanel === 'activity' && d.activityFilter) {
+        d.setActivityFilter('');
+        return;
+      }
+      if (d.activePanel === 'left' && d.leftFilter) {
+        d.setLeftFilter('');
+        return;
+      }
+      if (d.activePanel === 'right' && d.rightFilter) {
+        d.setRightFilter('');
+        return;
+      }
       return;
     }
-    if (matchKey(d.kb.settings, input, key)) { d.setShowSettings(true); return; }
-    if (matchKey(d.kb.viewArchive, input, key)) { d.setViewingArchive((v) => !v); return; }
+    if (matchKey(d.kb.settings, input, key)) {
+      d.setShowSettings(true);
+      return;
+    }
+    if (matchKey(d.kb.viewArchive, input, key)) {
+      d.setViewingArchive((v) => !v);
+      return;
+    }
     if (matchKey(d.kb.archive, input, key) && d.selectedSession) {
       if (d.viewingArchive) d.onUnarchive(d.selectedSession.sessionId);
       else d.onArchive(d.selectedSession.sessionId);
