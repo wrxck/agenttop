@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 import { getCachedSessions, subscribe, triggerRefresh } from '../../discovery/sessionsAsync.js';
-import type { Session, TokenUsage, SessionGroup, VisibleItem } from '../../discovery/types.js';
+import type { Session, TokenUsage, SessionGroup, VisibleItem, SessionStatus } from '../../discovery/types.js';
+import { STATUS_PRIORITY } from '../../discovery/types.js';
 import { getNicknames } from '../../config/store.js';
 
 const ACTIVE_POLL_MS = 10_000;
@@ -40,7 +41,9 @@ const buildGroups = (sessions: Session[], expandedKeys: Set<string>): SessionGro
       totalInputTokens: totalIn,
       totalOutputTokens: totalOut,
       latestModel: list[0].model,
-      isActive: list.some((s) => s.pid !== null),
+      status: list.reduce((best: SessionStatus, s) => {
+        return (STATUS_PRIORITY[s.status] ?? 3) < (STATUS_PRIORITY[best] ?? 3) ? s.status : best;
+      }, 'inactive' as SessionStatus),
       latestActivity: list[0].lastActivity,
       earliestStart: Math.min(...list.map((s) => s.startTime)),
     });

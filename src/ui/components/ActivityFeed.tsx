@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 
-import type { ActivityEvent, Session } from '../../discovery/types.js';
+import type { ActivityEvent, Session, SessionStatus } from '../../discovery/types.js';
 import { colors, getToolColor } from '../theme.js';
 import { formatTime } from '../format.js';
 
@@ -9,7 +9,7 @@ interface ActivityFeedProps {
   events: ActivityEvent[];
   sessionSlug: string | null;
   sessionId?: string;
-  isActive?: boolean;
+  status?: SessionStatus;
   focused: boolean;
   height: number;
   scrollOffset: number;
@@ -53,7 +53,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
     events,
     sessionSlug,
     sessionId,
-    isActive,
+    status,
     focused,
     height,
     scrollOffset,
@@ -149,7 +149,7 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
           </Box>
         )}
 
-        {!merged && sessionId && isActive === false && (
+        {!merged && sessionId && status === 'inactive' && (
           <Box paddingX={1} flexDirection="column">
             <Text color={colors.muted}> </Text>
             <Text color={colors.muted}>
