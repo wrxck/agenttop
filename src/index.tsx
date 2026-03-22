@@ -1,3 +1,5 @@
+process.title = 'agenttop';
+
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,7 +33,7 @@ const HELP = `agenttop v${VERSION} -- Real-time dashboard for AI coding agent se
 Usage: agenttop [options]
 
 Options:
-  --all-users          Monitor all users (root only)
+  --all-users          Monitor all users
   --no-security        Disable security analysis
   --json               Stream events as JSON lines (no TUI)
   --plain              Stream events as plain text (no TUI)
