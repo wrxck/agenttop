@@ -1,4 +1,7 @@
-export const colors = {
+import type { ThemeDefinition } from '../config/themes.js';
+import { deriveSeverityColors } from '../config/themes.js';
+
+export const colors: Record<string, string> = {
   primary: '#61AFEF',
   secondary: '#98C379',
   accent: '#C678DD',
@@ -33,3 +36,9 @@ export const toolColors: Record<string, string> = {
 };
 
 export const getToolColor = (toolName: string): string => toolColors[toolName] || colors.text;
+
+export const applyTheme = (theme: ThemeDefinition): void => {
+  Object.assign(colors, theme.colors);
+  Object.assign(toolColors, theme.toolColors);
+  Object.assign(severityColors, deriveSeverityColors(theme.colors));
+};

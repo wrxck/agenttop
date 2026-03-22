@@ -1,0 +1,75 @@
+import React from 'react';
+import { Box } from 'ink';
+
+import type { ToolCall } from '../../discovery/types.js';
+import type { Session } from '../../discovery/types.js';
+import type { Panel } from '../App.js';
+import { ActivityFeed } from './ActivityFeed.js';
+import { SessionDetail } from './SessionDetail.js';
+
+interface SplitPanelProps {
+  activePanel: Panel;
+  leftSession: Session | null;
+  rightSession: Session | null;
+  leftEvents: ToolCall[];
+  rightEvents: ToolCall[];
+  leftScroll: number;
+  rightScroll: number;
+  leftFilter: string;
+  rightFilter: string;
+  leftShowDetail: boolean;
+  rightShowDetail: boolean;
+  height: number;
+}
+
+export const SplitPanel: React.FC<SplitPanelProps> = React.memo(
+  ({
+    activePanel,
+    leftSession,
+    rightSession,
+    leftEvents,
+    rightEvents,
+    leftScroll,
+    rightScroll,
+    leftFilter,
+    rightFilter,
+    leftShowDetail,
+    rightShowDetail,
+    height,
+  }) => {
+    const left =
+      leftShowDetail && leftSession ? (
+        <SessionDetail session={leftSession} focused={activePanel === 'left'} height={height} />
+      ) : (
+        <ActivityFeed
+          events={leftEvents}
+          sessionSlug={leftSession?.slug ?? null}
+          focused={activePanel === 'left'}
+          height={height}
+          scrollOffset={leftScroll}
+          filter={leftFilter || undefined}
+        />
+      );
+
+    const right =
+      rightShowDetail && rightSession ? (
+        <SessionDetail session={rightSession} focused={activePanel === 'right'} height={height} />
+      ) : (
+        <ActivityFeed
+          events={rightEvents}
+          sessionSlug={rightSession?.slug ?? null}
+          focused={activePanel === 'right'}
+          height={height}
+          scrollOffset={rightScroll}
+          filter={rightFilter || undefined}
+        />
+      );
+
+    return (
+      <Box flexDirection="row" flexGrow={1}>
+        {left}
+        {right}
+      </Box>
+    );
+  },
+);
