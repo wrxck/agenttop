@@ -1,12 +1,13 @@
 import type { ToolCall, ToolResult, SecurityEvent, Alert, AlertSeverity } from '../discovery/types.js';
 import { isToolCall } from '../discovery/types.js';
-import type { SecurityRulesConfig } from '../config/store.js';
+import type { SecurityRulesConfig, CustomAlertRule } from '../config/store.js';
 
 import { checkNetwork } from './rules/network.js';
 import { checkExfiltration } from './rules/exfiltration.js';
 import { checkSensitiveFiles } from './rules/sensitive-files.js';
 import { checkShellEscape } from './rules/shell-escape.js';
 import { checkInjection } from './rules/injection.js';
+import { createCustomRules } from './rules/custom.js';
 
 type ToolCallRule = (call: ToolCall) => Alert | null;
 type SecurityEventRule = (event: SecurityEvent) => Alert | null;
@@ -38,8 +39,9 @@ export class SecurityEngine {
   private recentAlerts = new Map<string, number>();
   private minLevel: AlertSeverity;
   private rulesConfig: SecurityRulesConfig;
+  private customEventRules: SecurityEventRule[] = [];
 
-  constructor(minLevel: AlertSeverity = 'warn', rulesConfig?: SecurityRulesConfig) {
+  constructor(minLevel: AlertSeverity = 'warn', rulesConfig?: SecurityRulesConfig, customRules?: CustomAlertRule[]) {
     this.minLevel = minLevel;
     this.rulesConfig = rulesConfig ?? {
       network: true,
@@ -48,6 +50,9 @@ export class SecurityEngine {
       shellEscape: true,
       injection: true,
     };
+    if (customRules?.length) {
+      this.customEventRules = createCustomRules(customRules);
+    }
   }
 
   analyze(call: ToolCall): Alert[] {
@@ -72,6 +77,11 @@ export class SecurityEngine {
     for (const rule of allEventRules) {
       if (!this.rulesConfig[rule.key]) continue;
       const alert = rule.fn(event);
+      if (alert) alerts.push(alert);
+    }
+
+    for (const fn of this.customEventRules) {
+      const alert = fn(event);
       if (alert) alerts.push(alert);
     }
 

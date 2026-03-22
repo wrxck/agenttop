@@ -46,7 +46,7 @@ export const SplitPanel: React.FC<SplitPanelProps> = React.memo(
           events={leftEvents}
           sessionSlug={leftSession?.slug ?? null}
           sessionId={leftSession?.sessionId}
-          isActive={leftSession ? leftSession.pid !== null : undefined}
+          status={leftSession ? leftSession.status : undefined}
           focused={activePanel === 'left'}
           height={height}
           scrollOffset={leftScroll}
@@ -62,7 +62,7 @@ export const SplitPanel: React.FC<SplitPanelProps> = React.memo(
           events={rightEvents}
           sessionSlug={rightSession?.slug ?? null}
           sessionId={rightSession?.sessionId}
-          isActive={rightSession ? rightSession.pid !== null : undefined}
+          status={rightSession ? rightSession.status : undefined}
           focused={activePanel === 'right'}
           height={height}
           scrollOffset={rightScroll}

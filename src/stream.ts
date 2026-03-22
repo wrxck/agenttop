@@ -17,7 +17,7 @@ export const runStreamMode = (options: CLIOptions, isJson: boolean): void => {
   } else {
     for (const s of sessions) {
       write(
-        `SESSION ${s.slug} | ${s.model} | ${s.cwd} | CPU ${s.cpu}% | ${s.memMB}MB | ${formatTokens(s.usage.inputTokens)} in / ${formatTokens(s.usage.outputTokens)} out`,
+        `SESSION ${s.slug} | ${s.status} | ${s.model} | ${s.cwd} | CPU ${s.cpu}% | ${s.memMB}MB | ${formatTokens(s.usage.inputTokens)} in / ${formatTokens(s.usage.outputTokens)} out`,
       );
     }
   }

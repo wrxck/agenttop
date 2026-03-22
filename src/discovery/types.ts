@@ -5,6 +5,15 @@ export interface TokenUsage {
   outputTokens: number;
 }
 
+export type SessionStatus = 'waiting' | 'stale' | 'active' | 'inactive';
+
+export const STATUS_PRIORITY: Record<SessionStatus, number> = {
+  waiting: 0,
+  stale: 1,
+  active: 2,
+  inactive: 3,
+};
+
 export interface Session {
   sessionId: string;
   slug: string;
@@ -24,6 +33,8 @@ export interface Session {
   lastActivity: number;
   usage: TokenUsage;
   nickname?: string;
+  status: SessionStatus;
+  pinned: boolean;
 }
 
 export interface ToolCall {
@@ -102,7 +113,7 @@ export interface SessionGroup {
   totalInputTokens: number;
   totalOutputTokens: number;
   latestModel: string;
-  isActive: boolean;
+  status: SessionStatus;
   latestActivity: number;
   earliestStart: number;
 }

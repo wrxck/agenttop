@@ -32,7 +32,10 @@ Read more about [why agenttop was built](https://blog.matthesketh.pro/blog/agent
 - [Themes](#themes)
 - [Streaming modes](#streaming-modes)
 - [Active protection](#active-protection)
+- [Session status](#session-status)
+- [Pinned sessions](#pinned-sessions)
 - [Security rules](#security-rules)
+- [Custom alerts](#custom-alerts)
 - [MCP server](#mcp-server)
 - [Notifications](#notifications)
 - [Alert logging](#alert-logging)
@@ -64,6 +67,37 @@ npm install -g agenttop
 ```bash
 brew tap wrxck/tap
 brew install agenttop
+```
+
+### Scoop (Windows)
+
+```powershell
+scoop bucket add wrxck https://github.com/wrxck/scoop-bucket
+scoop install agenttop
+```
+
+### Winget (Windows)
+
+```powershell
+winget install wrxck.agenttop
+```
+
+### AUR (Arch Linux)
+
+```bash
+yay -S agenttop
+```
+
+### Nix
+
+```bash
+nix run github:wrxck/agenttop
+```
+
+### Snap
+
+```bash
+sudo snap install agenttop --classic
 ```
 
 ## Platform support
@@ -178,6 +212,30 @@ Press `d` to delete a session. A confirmation prompt appears. On confirm, the se
 
 Sessions with a running process are shown in green. Inactive sessions (no process) are shown in red.
 
+## Session status
+
+agenttop detects four session states:
+
+| Status | Indicator | Meaning |
+|--------|-----------|---------|
+| Waiting | Yellow ● `[waiting]` | Claude has asked a question and is waiting for your input |
+| Stale | Orange ● `[stale]` | Process is running but no output for the configured timeout |
+| Active | Green ● | Actively processing |
+| Inactive | Grey ○ | Process has ended |
+
+Sessions sort by status priority: waiting > stale > active > inactive, then by last activity within each group.
+
+The stale timeout (default 60s) can be adjusted in the Alert Rules menu (`r`).
+
+## Pinned sessions
+
+Press `p` to pin a session to the top of the list. Pinned sessions always appear above non-pinned sessions, regardless of status.
+
+- `p` — toggle pin on selected session
+- `P` — move pinned session up in pin order
+
+Pinned sessions show a `*` marker next to the status dot. Pin order persists across restarts.
+
 ## Session detail view
 
 Press `Enter` on a session to open the detail view, which shows:
@@ -205,9 +263,9 @@ Press `x` again to exit split mode and return to the single-panel layout.
 
 ## Themes
 
-agenttop ships with 15 built-in colour themes and a full theme management system. Open Settings (`s`) and select **Manage themes...** to access the theme menu.
+agenttop ships with 27 built-in colour themes and a full theme management system. Open Settings (`s`) and select **Manage themes...** to access the theme menu.
 
-Built-in themes: One Dark (default), Dracula, Monokai Pro, Solarized Dark, Solarized Light, Nord, Gruvbox Dark, Tokyo Night, Catppuccin Mocha, Catppuccin Latte, Rose Pine, Rose Pine Moon, Pastel Dark, Kanagawa, and Everforest.
+Built-in themes: One Dark (default), Dracula, Monokai Pro, Solarized Dark, Solarized Light, Nord, Gruvbox Dark, Tokyo Night, Catppuccin Mocha, Catppuccin Latte, Rose Pine, Rose Pine Moon, Pastel Dark, Kanagawa, Everforest, Hi Feline, Plumber Bros, Hedgehog Speed, Block Craft, Galaxy Conflicts, Pocket Creatures, Brick Wizard, Caped Knight, Web Crawler, Frozen Kingdom, Coral Reef, and Toy Ranch.
 
 In the theme menu:
 
@@ -289,6 +347,38 @@ Individual rules can be disabled in the config file under `security.rules`.
 
 Alerts are deduplicated within a 30-second window.
 
+## Custom alerts
+
+Define custom alert rules with regex patterns to match against tool activity.
+
+Press `r` to open the Alert Rules menu where you can:
+
+- Toggle built-in security rules on/off
+- Add custom rules with regex patterns
+- Choose what to match: tool input, output, tool name, or all
+- Set severity level per rule
+- Adjust the stale session timeout
+
+Custom rules can also be defined in your config file:
+
+```json
+{
+  "alerts": {
+    "staleTimeout": 60,
+    "custom": [
+      {
+        "name": "dangerous-rm",
+        "pattern": "rm\\s+-rf\\s+/",
+        "match": "input",
+        "severity": "high",
+        "message": "Dangerous recursive delete detected",
+        "enabled": true
+      }
+    ]
+  }
+}
+```
+
 ## MCP server
 
 agenttop can run as an MCP server, letting Claude Code query session status, alerts, and usage directly:
@@ -306,6 +396,15 @@ Available tools:
 | `agenttop_alerts` | Get recent security alerts (filterable by severity) |
 | `agenttop_usage` | Get token usage for a session or all sessions |
 | `agenttop_activity` | Get recent tool calls for a session |
+| `agenttop_waiting_sessions` | List sessions in waiting or stale state |
+| `agenttop_session_status` | Get status for a specific session |
+| `agenttop_custom_alerts` | List configured custom alert rules |
+| `agenttop_set_custom_alert` | Add or update a custom alert rule |
+| `agenttop_delete_custom_alert` | Delete a custom alert rule |
+| `agenttop_alert_history` | Get recent alerts with severity filter |
+| `agenttop_set_stale_timeout` | Set the stale timeout |
+| `agenttop_pin_session` | Pin a session to the top |
+| `agenttop_unpin_session` | Unpin a session |
 
 You can also run the MCP server directly via `agenttop-mcp` (installed as a separate bin).
 
@@ -355,7 +454,9 @@ Config file location depends on your platform — see [platform-specific config 
   },
   "alerts": {
     "logFile": "~/.config/agenttop/alerts.jsonl",
-    "enabled": true
+    "enabled": true,
+    "staleTimeout": 60,
+    "custom": []
   },
   "updates": {
     "checkOnLaunch": true,
@@ -382,13 +483,17 @@ Config file location depends on your platform — see [platform-specific config 
     "pinLeft": "1",
     "pinRight": "2",
     "swapPanels": "S",
-    "closePanel": "X"
+    "closePanel": "X",
+    "alertRules": "r",
+    "pin": "p",
+    "pinUp": "P"
   },
   "theme": "one-dark",
   "customThemes": {},
   "nicknames": {},
   "archived": {},
   "archiveExpiryDays": 0,
+  "pinnedSessions": [],
   "security": {
     "enabled": true,
     "rules": {
@@ -431,13 +536,16 @@ Default keybindings:
 | `1` / `2` | Pin session to left / right panel (split mode) |
 | `S` | Swap left and right panels (split mode) |
 | `X` | Close focused panel (split mode) |
+| `r` | Open alert rules menu |
+| `p` | Toggle pin on selected session |
+| `P` | Move pinned session up |
 | `q` | Quit |
 
 ## How it works
 
 agenttop reads Claude Code's session output files using cross-platform file watching via [chokidar](https://github.com/paulmillr/chokidar) (inotify on Linux, FSEvents on macOS, ReadDirectoryChangesW on Windows). Each session writes JSONL events containing tool calls, tool results, and token usage, which agenttop parses and displays in real-time.
 
-Three runtime dependencies: [ink](https://github.com/vadimdemedes/ink) (React-based TUI), chokidar (file watching), and [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/typescript-sdk) (MCP server). Everything else is Node built-ins.
+Four runtime dependencies: [ink](https://github.com/vadimdemedes/ink) and [react](https://react.dev/) (React-based TUI), [chokidar](https://github.com/paulmillr/chokidar) (file watching), and [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/typescript-sdk) (MCP server). Everything else is Node built-ins.
 
 ## Multi-user support
 

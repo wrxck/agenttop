@@ -1,8 +1,10 @@
-import { readdir, stat } from 'node:fs/promises';
+import { readdir, stat, open } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 
 import { getTaskDirs, getProjectsDirs } from '../config.js';
-import type { Session, ProcessInfo, TokenUsage } from './types.js';
+import type { Session, ProcessInfo, TokenUsage, SessionStatus } from './types.js';
+import { STATUS_PRIORITY } from './types.js';
+import { loadConfig } from '../config/store.js';
 import { setCachedSessions, isRefreshInFlight, setRefreshInFlight, pruneFileMetaCache } from './cache.js';
 import {
   normalisePath,
@@ -12,11 +14,61 @@ import {
   findModelAndUsageAsync,
 } from './asyncHelpers.js';
 
+export const readTailBytesAsync = async (filePath: string, bytes: number): Promise<string> => {
+  let fh;
+  try {
+    fh = await open(filePath, 'r');
+    const fstat = await stat(filePath);
+    const start = Math.max(0, fstat.size - bytes);
+    const readSize = Math.min(bytes, fstat.size);
+    const buf = Buffer.alloc(readSize);
+    await fh.read(buf, 0, readSize, start);
+    return buf.toString('utf-8');
+  } catch {
+    return '';
+  } finally {
+    await fh?.close();
+  }
+};
+
+const detectStatusAsync = async (
+  filePath: string,
+  hasPid: boolean,
+  lastActivity: number,
+  staleTimeout: number,
+): Promise<SessionStatus> => {
+  if (!hasPid) return 'inactive';
+  const tail = await readTailBytesAsync(filePath, 4096);
+  const lines = tail.split('\n').filter(Boolean);
+  if (lines.length > 0) {
+    try {
+      const lastEvent = JSON.parse(lines[lines.length - 1]);
+      if (lastEvent.type === 'assistant') {
+        const content = lastEvent.message?.content;
+        if (Array.isArray(content)) {
+          const hasAskUser = content.some(
+            (b: { type?: string; name?: string }) => b.type === 'tool_use' && b.name === 'AskUserQuestion',
+          );
+          if (hasAskUser) return 'waiting';
+          const hasToolUse = content.some((b: { type?: string }) => b.type === 'tool_use');
+          if (!hasToolUse) return 'waiting';
+        }
+      }
+    } catch {
+      /* malformed */
+    }
+  }
+  if (Date.now() - lastActivity > staleTimeout * 1000) return 'stale';
+  return 'active';
+};
+
 const discoverFromProjectsAsync = async (
   allUsers: boolean,
   processes: ProcessInfo[],
   sessionMap: Map<string, Session>,
   seenFiles: Set<string>,
+  staleTimeout: number,
+  pinnedOrder: string[],
 ): Promise<void> => {
   const projectsDirs = getProjectsDirs(allUsers);
 
@@ -81,6 +133,8 @@ const discoverFromProjectsAsync = async (
           startTime: fstat.birthtimeMs || fstat.ctimeMs,
           lastActivity: fstat.mtimeMs,
           usage: meta.usage,
+          status: await detectStatusAsync(filePath, matchingProcess !== undefined, fstat.mtimeMs, staleTimeout),
+          pinned: pinnedOrder.includes(meta.sessionId),
         };
 
         sessionMap.set(meta.sessionId, session);
@@ -94,6 +148,8 @@ const discoverFromTmpAsync = async (
   processes: ProcessInfo[],
   sessionMap: Map<string, Session>,
   seenFiles: Set<string>,
+  staleTimeout: number,
+  pinnedOrder: string[],
 ): Promise<void> => {
   const taskDirs = getTaskDirs(allUsers);
 
@@ -198,6 +254,15 @@ const discoverFromTmpAsync = async (
         const normCwd = normalisePath(cwd);
         const matchingProcess = processes.find((p) => p.cwd && normalisePath(p.cwd) === normCwd);
 
+        let latestFile = outputFiles[0];
+        for (const f of outputFiles) {
+          try {
+            if ((await stat(f)).mtimeMs > (await stat(latestFile)).mtimeMs) latestFile = f;
+          } catch {
+            /* keep current */
+          }
+        }
+
         const session: Session = {
           sessionId,
           slug: slug || sessionId.slice(0, 12),
@@ -216,6 +281,8 @@ const discoverFromTmpAsync = async (
           startTime: startTime === Infinity ? Date.now() : startTime,
           lastActivity,
           usage: totalUsage,
+          status: await detectStatusAsync(latestFile, matchingProcess !== undefined, lastActivity, staleTimeout),
+          pinned: pinnedOrder.includes(sessionId),
         };
 
         sessionMap.set(sessionId || projectName, session);
@@ -225,19 +292,29 @@ const discoverFromTmpAsync = async (
 };
 
 const discoverSessionsAsync = async (allUsers: boolean): Promise<Session[]> => {
+  const config = loadConfig();
+  const staleTimeout = config.alerts.staleTimeout ?? 60;
+  const pinnedOrder = config.pinnedSessions ?? [];
   const processes = await getClaudeProcessesAsync();
   const sessionMap = new Map<string, Session>();
   const seenFiles = new Set<string>();
 
-  await discoverFromProjectsAsync(allUsers, processes, sessionMap, seenFiles);
-  await discoverFromTmpAsync(allUsers, processes, sessionMap, seenFiles);
+  await discoverFromProjectsAsync(allUsers, processes, sessionMap, seenFiles, staleTimeout, pinnedOrder);
+  await discoverFromTmpAsync(allUsers, processes, sessionMap, seenFiles, staleTimeout, pinnedOrder);
 
   pruneFileMetaCache(seenFiles);
 
   return Array.from(sessionMap.values()).sort((a, b) => {
-    const aActive = a.pid !== null ? 1 : 0;
-    const bActive = b.pid !== null ? 1 : 0;
-    if (aActive !== bActive) return bActive - aActive;
+    const aPin = pinnedOrder.indexOf(a.sessionId);
+    const bPin = pinnedOrder.indexOf(b.sessionId);
+    const aIsPinned = aPin !== -1;
+    const bIsPinned = bPin !== -1;
+    if (aIsPinned && !bIsPinned) return -1;
+    if (!aIsPinned && bIsPinned) return 1;
+    if (aIsPinned && bIsPinned) return aPin - bPin;
+    const aPri = STATUS_PRIORITY[a.status];
+    const bPri = STATUS_PRIORITY[b.status];
+    if (aPri !== bPri) return aPri - bPri;
     return b.lastActivity - a.lastActivity;
   });
 };
