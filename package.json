@@ -12,13 +12,13 @@
     "hooks"
   ],
   "scripts": {
-    "build": "tsup && chmod +x dist/index.js dist/mcp-server.js && mkdir -p hooks && cp src/hooks/agenttop-guard.py hooks/",
+    "build": "tsup && node -e \"const fs=require('fs');const p=require('path');try{fs.chmodSync('dist/index.js',0o755);fs.chmodSync('dist/mcp-server.js',0o755)}catch{};fs.mkdirSync('hooks',{recursive:true});fs.copyFileSync(p.join('src','hooks','agenttop-guard.py'),p.join('hooks','agenttop-guard.py'))\"",
     "dev": "tsup --watch",
     "start": "node dist/index.js",
     "test": "vitest run",
     "lint": "eslint src tests",
-    "format": "prettier --write 'src/**/*.{ts,tsx}' 'tests/**/*.ts'",
-    "format:check": "prettier --check 'src/**/*.{ts,tsx}' 'tests/**/*.ts'"
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.ts\""
   },
   "keywords": [
     "agenttop",
