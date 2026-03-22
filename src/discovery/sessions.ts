@@ -333,5 +333,10 @@ export const discoverSessions = (allUsers: boolean): Session[] => {
   discoverFromProjects(allUsers, processes, sessionMap);
   discoverFromTmp(allUsers, processes, sessionMap);
 
-  return Array.from(sessionMap.values()).sort((a, b) => b.lastActivity - a.lastActivity);
+  return Array.from(sessionMap.values()).sort((a, b) => {
+    const aActive = a.pid !== null ? 1 : 0;
+    const bActive = b.pid !== null ? 1 : 0;
+    if (aActive !== bActive) return bActive - aActive;
+    return b.lastActivity - a.lastActivity;
+  });
 };
