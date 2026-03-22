@@ -7,6 +7,8 @@ import { colors, getToolColor } from '../theme.js';
 interface ActivityFeedProps {
   events: ToolCall[];
   sessionSlug: string | null;
+  sessionId?: string;
+  isActive?: boolean;
   focused: boolean;
   height: number;
   scrollOffset: number;
@@ -46,7 +48,7 @@ const summarizeInput = (call: ToolCall): string => {
 };
 
 export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
-  ({ events, sessionSlug, focused, height, scrollOffset, filter }) => {
+  ({ events, sessionSlug, sessionId, isActive, focused, height, scrollOffset, filter }) => {
     const viewportRows = height - 2;
     const totalEvents = events.length;
     const start = Math.max(0, totalEvents - viewportRows - scrollOffset);
@@ -102,6 +104,15 @@ export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
         {focused && canScroll && !isAtTop && visible.length > 0 && (
           <Box paddingX={1} justifyContent="flex-end">
             <Text color={colors.muted}>{isAtBottom ? '' : 'G:bottom '}</Text>
+          </Box>
+        )}
+
+        {sessionId && isActive === false && (
+          <Box paddingX={1} flexDirection="column">
+            <Text color={colors.muted}> </Text>
+            <Text color={colors.muted}>
+              resume: <Text color={colors.text}>claude --resume {sessionId}</Text>
+            </Text>
           </Box>
         )}
       </Box>
