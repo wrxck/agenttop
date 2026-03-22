@@ -7,7 +7,7 @@
 [![Node.js](https://img.shields.io/node/v/agenttop.svg)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)](https://www.typescriptlang.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/wrxck/agenttop/pulls)
-[![Lines of code](https://tokei.rs/b1/github/wrxck/agenttop)](https://github.com/wrxck/agenttop)
+[![GitHub code size](https://img.shields.io/github/languages/code-size/wrxck/agenttop)](https://github.com/wrxck/agenttop)
 
 Real-time terminal dashboard for monitoring AI coding agent sessions — like `htop` for agents.
 
