@@ -72,9 +72,7 @@ export const installHooks = (): void => {
   );
 
   if (allToolsMatcher) {
-    const alreadyInstalled = allToolsMatcher.hooks.some(
-      (h: HookEntry) => h.command.includes('agenttop-guard'),
-    );
+    const alreadyInstalled = allToolsMatcher.hooks.some((h: HookEntry) => h.command.includes('agenttop-guard'));
     if (alreadyInstalled) {
       process.stdout.write('agenttop hooks already installed\n');
       return;

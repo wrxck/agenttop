@@ -32,5 +32,4 @@ export const toolColors: Record<string, string> = {
   WebSearch: colors.warning,
 };
 
-export const getToolColor = (toolName: string): string =>
-  toolColors[toolName] || colors.text;
+export const getToolColor = (toolName: string): string => toolColors[toolName] || colors.text;
