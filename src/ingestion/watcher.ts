@@ -1,7 +1,7 @@
 import { watch } from 'chokidar';
 import type { FSWatcher } from 'chokidar';
 
-import { getTaskDirs } from '../config.js';
+import { getTaskDirs, getProjectsDirs } from '../config.js';
 import type { ToolCall, SecurityEvent, TokenUsage } from '../discovery/types.js';
 import { FileTailer } from './tail.js';
 import { parseLines, parseAllEvents, parseUsageFromLines } from './parser.js';
@@ -33,7 +33,8 @@ export class Watcher {
 
   start(): void {
     const taskDirs = getTaskDirs(this.allUsers);
-    const globs = taskDirs.map((d) => `${d}/**/tasks/*.output`);
+    const projectsDirs = getProjectsDirs(this.allUsers);
+    const globs = [...taskDirs.map((d) => `${d}/**/tasks/*.output`), ...projectsDirs.map((d) => `${d}/**/*.jsonl`)];
 
     this.watcher = watch(globs, {
       persistent: true,
