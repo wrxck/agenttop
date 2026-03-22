@@ -1,0 +1,129 @@
+# Contributing to agenttop
+
+Contributions are welcome. This document covers the process and standards expected.
+
+## Getting started
+
+```bash
+git clone https://github.com/wrxck/agenttop.git
+cd agenttop
+npm install
+npm run build
+```
+
+Run locally:
+
+```bash
+node dist/index.js
+```
+
+## Development workflow
+
+1. Fork the repo and clone your fork
+2. Create a feature branch from `develop`: `git checkout -b feat/my-feature develop`
+3. Make your changes
+4. Build and verify: `npm run build && node dist/index.js --version`
+5. Push and open a PR targeting `develop`
+
+### Branch model
+
+- **main** — production releases only
+- **develop** — integration branch, all PRs target here
+- **feat/\***, **fix/\***, **chore/\*** — working branches
+
+Never push directly to `main` or `develop`.
+
+## Code standards
+
+### TypeScript
+
+- Strict mode enabled
+- ESM only (`"type": "module"`)
+- Named exports preferred over default exports
+- No `any` types — use `unknown` and narrow
+- Imports ordered: node built-ins, external packages, internal modules (separated by blank lines)
+
+### Commits
+
+Use [conventional commits](https://www.conventionalcommits.org/):
+
+```
+type(scope): lowercase description
+```
+
+Types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`
+
+Examples:
+
+```
+feat(ui): add session filtering
+fix(discovery): handle missing output files
+chore(deps): update chokidar to 4.1.0
+```
+
+### Style
+
+- No emojis in code or commits
+- Comments in lowercase, British English spelling, only when necessary
+- Keep functions small and focused
+- No over-engineering — solve the current problem, not hypothetical future ones
+
+## Adding security rules
+
+Security rules live in `src/analysis/rules/`. Each rule is a pure function:
+
+```typescript
+(event: SecurityEvent) => Alert | null
+```
+
+To add a new rule:
+
+1. Create a new file in `src/analysis/rules/`
+2. Export a function matching the signature above
+3. Register it in `src/analysis/security.ts`
+4. If it should also work in the active hook, add patterns to `src/hooks/agenttop-guard.py`
+
+## Pull request checklist
+
+- [ ] Branch created from `develop`
+- [ ] PR targets `develop` (not `main`)
+- [ ] `npm run build` succeeds
+- [ ] `node dist/index.js --version` works
+- [ ] `node dist/index.js --help` works
+- [ ] Conventional commit messages
+- [ ] No unrelated changes
+- [ ] CI passes
+
+## Architecture
+
+```
+src/
+  index.tsx              CLI entry, arg parsing, Ink render
+  config.ts              Path resolution, platform detection
+  discovery/
+    types.ts             All shared types
+    sessions.ts          Session discovery from /tmp + ps
+  ingestion/
+    tail.ts              Seek-based file tailing
+    parser.ts            JSONL -> ToolCall + ToolResult
+    watcher.ts           Chokidar file watcher
+  analysis/
+    security.ts          Rule engine
+    rules/               One file per rule category
+  hooks/
+    agenttop-guard.py    Claude Code PostToolUse hook
+    installer.ts         --install-hooks / --uninstall-hooks
+  ui/
+    App.tsx              Root layout, keyboard handling
+    theme.ts             Colours
+    components/          Ink components
+    hooks/               React hooks for state
+```
+
+## Dependencies
+
+Two runtime deps: `ink` and `chokidar`. Keep it that way. If you need something, check if Node built-ins cover it first.
+
+## License
+
+By contributing, you agree that your contributions will be licensed under the MIT License.

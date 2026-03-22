@@ -21,29 +21,21 @@ const severityIcon: Record<string, string> = {
   critical: '!!!',
 };
 
-export const AlertBar: React.FC<AlertBarProps> = ({ alerts, maxVisible = 4 }) => {
+export const AlertBar: React.FC<AlertBarProps> = React.memo(({ alerts, maxVisible = 4 }) => {
   const visible = alerts.slice(-maxVisible);
 
   return (
-    <Box
-      flexDirection="column"
-      borderStyle="single"
-      borderColor={alerts.length > 0 ? colors.error : colors.border}
-    >
+    <Box flexDirection="column" borderStyle="single" borderColor={alerts.length > 0 ? colors.error : colors.border}>
       <Box paddingX={1}>
         <Text color={colors.error} bold>
           ALERTS
         </Text>
-        {alerts.length === 0 && (
-          <Text color={colors.muted}> (none)</Text>
-        )}
+        {alerts.length === 0 && <Text color={colors.muted}> (none)</Text>}
       </Box>
 
       {visible.map((alert, i) => (
         <Box key={alert.id || i} paddingX={1}>
-          <Text color={severityColors[alert.severity] || colors.text}>
-            [{severityIcon[alert.severity] || '?'}]
-          </Text>
+          <Text color={severityColors[alert.severity] || colors.text}>[{severityIcon[alert.severity] || '?'}]</Text>
           <Text color={colors.muted}> {formatTime(alert.timestamp)} </Text>
           <Text color={colors.warning}>{alert.sessionSlug}: </Text>
           <Text color={colors.text}>{alert.message.slice(0, 60)}</Text>
@@ -51,4 +43,4 @@ export const AlertBar: React.FC<AlertBarProps> = ({ alerts, maxVisible = 4 }) =>
       ))}
     </Box>
   );
-};
+});

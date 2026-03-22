@@ -1,19 +1,24 @@
 {
   "name": "agenttop",
-  "version": "1.0.0",
+  "version": "0.3.0",
   "description": "Real-time terminal dashboard for monitoring AI coding agent sessions — like htop for agents",
   "type": "module",
   "bin": {
-    "agenttop": "./dist/index.js"
+    "agenttop": "dist/index.js",
+    "agenttop-mcp": "dist/mcp-server.js"
   },
   "files": [
     "dist",
     "hooks"
   ],
   "scripts": {
-    "build": "tsup && chmod +x dist/index.js && mkdir -p hooks && cp src/hooks/agenttop-guard.py hooks/",
+    "build": "tsup && chmod +x dist/index.js dist/mcp-server.js && mkdir -p hooks && cp src/hooks/agenttop-guard.py hooks/",
     "dev": "tsup --watch",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "lint": "eslint src tests",
+    "format": "prettier --write 'src/**/*.{ts,tsx}' 'tests/**/*.ts'",
+    "format:check": "prettier --check 'src/**/*.{ts,tsx}' 'tests/**/*.ts'"
   },
   "keywords": [
     "agenttop",
@@ -23,22 +28,35 @@
     "dashboard",
     "tui",
     "security",
-    "htop"
+    "htop",
+    "mcp"
   ],
-  "author": "Matt Hesketh <matt@heskethwebdesign.co.uk>",
-  "license": "MIT",
-  "engines": {
-    "node": "18.0.0"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wrxck/agenttop.git"
   },
+  "homepage": "https://github.com/wrxck/agenttop#readme",
+  "bugs": {
+    "url": "https://github.com/wrxck/agenttop/issues"
+  },
+"author": "Matt Hesketh <matt@heskethwebdesign.co.uk>",
+  "license": "MIT",
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.27.1",
     "chokidar": "4.0.3",
     "ink": "6.0.0",
     "react": "19.1.0"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "@types/node": "22.15.3",
     "@types/react": "19.1.2",
+    "eslint": "10.1.0",
+    "eslint-config-prettier": "10.1.8",
+    "prettier": "3.8.1",
     "tsup": "8.5.0",
-    "typescript": "5.8.3"
+    "typescript": "5.8.3",
+    "typescript-eslint": "8.57.1",
+    "vitest": "4.1.0"
   }
 }

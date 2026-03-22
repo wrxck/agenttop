@@ -1,3 +1,10 @@
+export interface TokenUsage {
+  inputTokens: number;
+  cacheCreationTokens: number;
+  cacheReadTokens: number;
+  outputTokens: number;
+}
+
 export interface Session {
   sessionId: string;
   slug: string;
@@ -15,6 +22,8 @@ export interface Session {
   outputFiles: string[];
   startTime: number;
   lastActivity: number;
+  usage: TokenUsage;
+  nickname?: string;
 }
 
 export interface ToolCall {
@@ -40,24 +49,29 @@ export interface ToolResult {
 
 export type SecurityEvent = ToolCall | ToolResult;
 
-export const isToolResult = (event: SecurityEvent): event is ToolResult =>
-  'toolUseId' in event;
+export const isToolResult = (event: SecurityEvent): event is ToolResult => 'toolUseId' in event;
 
-export const isToolCall = (event: SecurityEvent): event is ToolCall =>
-  'toolName' in event;
+export const isToolCall = (event: SecurityEvent): event is ToolCall => 'toolName' in event;
 
 export interface RawEvent {
   type: 'user' | 'assistant' | 'tool_result';
   sessionId: string;
   agentId: string;
   slug: string;
-  timestamp?: number;
+  timestamp?: string;
   cwd: string;
   version: string;
   gitBranch: string;
   message: {
     role: string;
     content: unknown;
+    model?: string;
+    usage?: {
+      input_tokens?: number;
+      cache_creation_input_tokens?: number;
+      cache_read_input_tokens?: number;
+      output_tokens?: number;
+    };
   };
 }
 
@@ -81,15 +95,23 @@ export interface ProcessInfo {
   memKB: number;
   command: string;
   startTime: string;
+  cwd: string;
 }
 
 export interface CLIOptions {
   allUsers: boolean;
   noSecurity: boolean;
   json: boolean;
+  plain: boolean;
   alertLevel: AlertSeverity;
   installHooks: boolean;
   uninstallHooks: boolean;
   help: boolean;
   version: boolean;
+  noNotify: boolean;
+  noAlertLog: boolean;
+  noUpdates: boolean;
+  pollInterval: number;
+  mcp: boolean;
+  installMcp: boolean;
 }

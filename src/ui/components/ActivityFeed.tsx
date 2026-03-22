@@ -2,14 +2,14 @@ import React from 'react';
 import { Box, Text } from 'ink';
 
 import type { ToolCall } from '../../discovery/types.js';
-import { colors } from '../theme.js';
-import { getToolColor } from '../theme.js';
+import { colors, getToolColor } from '../theme.js';
 
 interface ActivityFeedProps {
   events: ToolCall[];
   sessionSlug: string | null;
   focused: boolean;
   height: number;
+  scrollOffset: number;
 }
 
 const formatTime = (ts: number): string => {
@@ -24,11 +24,12 @@ const summarizeInput = (call: ToolCall): string => {
     case 'Bash':
       return String(input.command || '').slice(0, 50);
     case 'Read':
-      return String(input.file_path || '').split('/').slice(-2).join('/');
     case 'Write':
-      return String(input.file_path || '').split('/').slice(-2).join('/');
     case 'Edit':
-      return String(input.file_path || '').split('/').slice(-2).join('/');
+      return String(input.file_path || '')
+        .split('/')
+        .slice(-2)
+        .join('/');
     case 'Grep':
       return `pattern="${String(input.pattern || '').slice(0, 30)}"`;
     case 'Glob':
@@ -43,42 +44,63 @@ const summarizeInput = (call: ToolCall): string => {
   }
 };
 
-export const ActivityFeed: React.FC<ActivityFeedProps> = ({ events, sessionSlug, focused, height }) => {
-  const visible = events.slice(-(height - 2));
+export const ActivityFeed: React.FC<ActivityFeedProps> = React.memo(
+  ({ events, sessionSlug, focused, height, scrollOffset }) => {
+    const viewportRows = height - 2;
+    const totalEvents = events.length;
+    const start = Math.max(0, totalEvents - viewportRows - scrollOffset);
+    const end = start + viewportRows;
+    const visible = events.slice(start, end);
 
-  return (
-    <Box
-      flexDirection="column"
-      flexGrow={1}
-      borderStyle="single"
-      borderColor={focused ? colors.primary : colors.border}
-    >
-      <Box paddingX={1}>
-        <Text color={colors.header} bold>
-          ACTIVITY
-        </Text>
-        {sessionSlug && (
-          <Text color={colors.muted}> ({sessionSlug})</Text>
+    const isAtBottom = scrollOffset === 0;
+    const isAtTop = start === 0;
+    const canScroll = totalEvents > viewportRows;
+
+    return (
+      <Box
+        flexDirection="column"
+        flexGrow={1}
+        borderStyle="single"
+        borderColor={focused ? colors.primary : colors.border}
+      >
+        <Box paddingX={1} justifyContent="space-between">
+          <Box>
+            <Text color={colors.header} bold>
+              ACTIVITY
+            </Text>
+            {sessionSlug && <Text color={colors.muted}> ({sessionSlug})</Text>}
+          </Box>
+          {focused && canScroll && !isAtBottom && (
+            <Text color={colors.muted}>
+              [{totalEvents - end + viewportRows}/{totalEvents}]
+            </Text>
+          )}
+        </Box>
+
+        {visible.length === 0 && (
+          <Box paddingX={1} paddingY={1}>
+            <Text color={colors.muted} italic>
+              {sessionSlug ? 'Waiting for activity...' : 'Select a session'}
+            </Text>
+          </Box>
+        )}
+
+        {visible.map((event, i) => (
+          <Box key={`${event.timestamp}-${i}`} paddingX={1}>
+            <Text color={colors.muted}>{formatTime(event.timestamp)} </Text>
+            <Text color={getToolColor(event.toolName)} bold>
+              {event.toolName.padEnd(8)}
+            </Text>
+            <Text color={colors.text}> {summarizeInput(event)}</Text>
+          </Box>
+        ))}
+
+        {focused && canScroll && !isAtTop && visible.length > 0 && (
+          <Box paddingX={1} justifyContent="flex-end">
+            <Text color={colors.muted}>{isAtBottom ? '' : 'G:bottom '}</Text>
+          </Box>
         )}
       </Box>
-
-      {visible.length === 0 && (
-        <Box paddingX={1} paddingY={1}>
-          <Text color={colors.muted} italic>
-            {sessionSlug ? 'Waiting for activity...' : 'Select a session'}
-          </Text>
-        </Box>
-      )}
-
-      {visible.map((event, i) => (
-        <Box key={`${event.timestamp}-${i}`} paddingX={1}>
-          <Text color={colors.muted}>{formatTime(event.timestamp)} </Text>
-          <Text color={getToolColor(event.toolName)} bold>
-            {event.toolName.padEnd(8)}
-          </Text>
-          <Text color={colors.text}> {summarizeInput(event)}</Text>
-        </Box>
-      ))}
-    </Box>
-  );
-};
+    );
+  },
+);

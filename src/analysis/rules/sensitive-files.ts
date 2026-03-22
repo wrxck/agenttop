@@ -30,8 +30,10 @@ export const checkSensitiveFiles = (call: ToolCall): Alert | null => {
   const matched = SENSITIVE_PATTERNS.some((p) => p.test(inputs));
   if (!matched) return null;
 
-  const target =
-    String(call.toolInput.file_path || call.toolInput.command || call.toolInput.pattern || '').slice(0, 60);
+  const target = String(call.toolInput.file_path || call.toolInput.command || call.toolInput.pattern || '').slice(
+    0,
+    60,
+  );
 
   return {
     id: `sens-${call.timestamp}-${call.agentId}`,

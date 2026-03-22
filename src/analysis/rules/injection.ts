@@ -22,10 +22,10 @@ const INJECTION_PATTERNS = [
 ];
 
 const ENCODED_PATTERNS = [
-  /aWdub3JlIHByZXZpb3Vz/,  // base64 "ignore previous"
-  /&#x[0-9a-f]+;/i,         // html hex entities
-  /&#\d+;/,                  // html decimal entities
-  /\\u[0-9a-f]{4}/i,        // unicode escapes
+  /aWdub3JlIHByZXZpb3Vz/, // base64 "ignore previous"
+  /&#x[0-9a-f]+;/i, // html hex entities
+  /&#\d+;/, // html decimal entities
+  /\\u[0-9a-f]{4}/i, // unicode escapes
 ];
 
 export const checkInjection = (event: SecurityEvent): Alert | null => {
@@ -66,9 +66,7 @@ const checkToolResultInjection = (result: ToolResult): Alert | null => {
   if (!textPatternMatch && !encodedMatch) return null;
 
   const matchedPattern = INJECTION_PATTERNS.find((p) => p.test(content));
-  const snippet = matchedPattern
-    ? content.match(matchedPattern)?.[0]?.slice(0, 50) || ''
-    : 'encoded pattern';
+  const snippet = matchedPattern ? content.match(matchedPattern)?.[0]?.slice(0, 50) || '' : 'encoded pattern';
 
   return {
     id: `inject-result-${result.timestamp}-${result.agentId}`,
