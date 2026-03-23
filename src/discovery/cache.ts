@@ -8,7 +8,21 @@ const listeners = new Set<Listener>();
 
 export const getCachedSessions = (): Session[] => sessions;
 
+// simple hash of session state to detect meaningful changes
+const hashSessions = (list: Session[]): string => {
+  let h = '';
+  for (const s of list) {
+    h += `${s.sessionId}:${s.status}:${s.pid}:${s.lastActivity}:${s.usage.inputTokens}:${s.usage.outputTokens};`;
+  }
+  return h;
+};
+
+let lastHash = '';
+
 export const setCachedSessions = (next: Session[]): void => {
+  const nextHash = hashSessions(next);
+  if (nextHash === lastHash) return; // nothing changed, skip re-render
+  lastHash = nextHash;
   sessions = next;
   for (const fn of listeners) fn(next);
 };

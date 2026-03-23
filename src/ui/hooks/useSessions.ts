@@ -130,30 +130,47 @@ export const useSessions = (
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const usageOverrides = useRef(new Map<string, TokenUsage>());
 
+  const lastSessionIdsRef = useRef('');
+
+  const updateSessions = useCallback(
+    (force?: boolean) => {
+      const found = getCachedSessions();
+      const filtered = enrichAndFilter(found, usageOverrides.current, filter, archivedIds, viewingArchive);
+      // skip state update if session list hasn't meaningfully changed
+      const key = filtered.map((s) => `${s.sessionId}:${s.status}:${s.lastActivity}`).join(',');
+      if (!force && key === lastSessionIdsRef.current) return;
+      lastSessionIdsRef.current = key;
+      setSessions(filtered);
+    },
+    [filter, archivedIds, viewingArchive],
+  );
+
   const refresh = useCallback(() => {
-    const found = getCachedSessions();
-    const filtered = enrichAndFilter(found, usageOverrides.current, filter, archivedIds, viewingArchive);
-    setSessions(filtered);
+    updateSessions(true);
     triggerRefresh(allUsers);
-  }, [allUsers, filter, archivedIds, viewingArchive]);
+  }, [allUsers, updateSessions]);
 
   useEffect(() => {
     // subscribe to cache updates from background refresh
-    const unsubscribe = subscribe(() => {
-      const found = getCachedSessions();
-      const filtered = enrichAndFilter(found, usageOverrides.current, filter, archivedIds, viewingArchive);
-      setSessions(filtered);
-    });
+    const unsubscribe = subscribe(() => updateSessions());
     return unsubscribe;
-  }, [filter, archivedIds, viewingArchive]);
+  }, [updateSessions]);
+
+  const hasSessions = sessions.length > 0;
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
 
   useEffect(() => {
-    // initial load + kick off first background refresh
-    refresh();
-    const pollMs = sessions.length > 0 ? ACTIVE_POLL_MS : IDLE_POLL_MS;
+    // initial load
+    refreshRef.current();
+  }, []);
+
+  useEffect(() => {
+    // poll for session discovery updates
+    const pollMs = hasSessions ? ACTIVE_POLL_MS : IDLE_POLL_MS;
     const interval = setInterval(() => triggerRefresh(allUsers), pollMs);
     return () => clearInterval(interval);
-  }, [refresh, sessions.length > 0]);
+  }, [allUsers, hasSessions]);
 
   const groups = useMemo(() => buildGroups(sessions, expandedKeys), [sessions, expandedKeys]);
   const visibleItems = useMemo(() => buildVisibleItems(groups), [groups]);
